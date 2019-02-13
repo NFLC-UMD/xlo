@@ -1,5 +1,5 @@
 {
-  "name": "nflc-lo-packager",
+  "name": "@umdnflc/lo-packager",
   "version": "1.0.0",
   "description": "A tool for packaging NFLC Learning Objects",
   "main": "lib/index.js",
@@ -19,7 +19,7 @@
     "type": "git",
     "url": "https://bitbucket.com/nflcumd/nflc-lo-packager"
   },
-  "author": "Thomas Ford",
+  "author": "Thomas W. Ford",
   "license": "ISC",
   "files": [
     "lib/**/*"
