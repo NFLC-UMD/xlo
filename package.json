@@ -1,6 +1,6 @@
 {
   "name": "@umdnflc/lo-packager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A tool for packaging NFLC Learning Objects",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -13,7 +13,7 @@
     "prepublishOnly": "npm test && npm run lint",
     "preversion": "npm run lint",
     "version": "npm run format && git add -A src",
-    "postversion": "git push && git push --tags"    
+    "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",
