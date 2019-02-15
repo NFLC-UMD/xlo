@@ -1,3 +1,10 @@
 {
-    "extends": ["tslint:recommended", "tslint-config-prettier"]
+    "defaultSeverity": "error",
+    "extends": ["tslint:recommended", "tslint-config-prettier"],
+    "jsRules": {},
+    "rules": {
+        "object-literal-sort-keys":false,
+        "semicolon": [true, "always", "ignore-bound-class-methods"]
+    },
+    "rulesDirectory": []    
 }
