@@ -45,16 +45,9 @@ export class LoPackageExporter {
     private langs: any[] = [],
     private filterList: any[] = []
     ){
-      this.axi = axios.create({
-        httpsAgent: new https.Agent({  
-          rejectUnauthorized: rejectSelfSignedCert
-        }),
-        headers: {
-          'authorization': this.accessToken
-        }
-      });
   
     }
+
 
 
   // cli only
@@ -107,7 +100,8 @@ export class LoPackageExporter {
       url: `https://${this.config.host}/api/users/login?rememberMe=false`,
       data: theBody,
       httpsAgent: agent
-    });    
+    });
+    this.setAxiInstance(response.data.id);
     return this.accessToken = response.data.id;
   }
 
@@ -171,11 +165,11 @@ export class LoPackageExporter {
         this.axi.get(urls[0]),
         this.axi.get(urls[1])
       ]);
-      log(chalk`{green ${rs[0].statusText}} {magenta ${rs[0].config.url}}`);   
-      log(chalk`{green ${rs[1].statusText}} {magenta ${rs[1].config.url}}`);   
+      log(chalk`{green ${rs[0].statusText}} {blue ${rs[0].config.url}}`);   
+      log(chalk`{green ${rs[1].statusText}} {blue ${rs[1].config.url}}`);   
       pees.push(rs);
     }
-    pees.reduce((accumulator, response) => accumulator.then(() => {
+    await pees.reduce((accumulator, response) => accumulator.then(() => {
       const jso = response[0].data;
       const filelist = response[1].data;
       if(!jso.containerId) { // for legacy CLOs
@@ -233,7 +227,9 @@ export class LoPackageExporter {
       }
       return Promise.all(downloads);
     }), Promise.resolve());
-    return 'done';
+
+
+    return 'pack done';
   }
 
   private getDataDir(runEnv: XloRunEnv, containerId: string): string {
@@ -242,7 +238,7 @@ export class LoPackageExporter {
     path.join(this.packageDir, containerId, 'data', containerId);
   }
 
-  private fileExists(target: string) {
+  private async fileExists(target: string) {
     return new Promise((resolve, reject) => {
         fs.open(target, 'r', (err2, fd2) => {
             if (err2) {
@@ -254,19 +250,21 @@ export class LoPackageExporter {
     });      
   }
 
-  private downloadFile(containerId: string, dataPath: string, fileName: string) {
-    return this.axi.get({
-      method: 'get',
-      url: this.getDataEndpoint(containerId, fileName),
+  private async downloadFile(containerId: string, dataPath: string, fileName: string) {
+    const theUrl = this.getDataEndpoint(containerId, fileName);
+    return this.axi.get(theUrl, {
       responseType:'stream'
     })
     .then( (response: any) => {
-      log("Downloaded:", chalk.blue(fileName));
-      response.data.pipe(fs.createWriteStream(path.join(dataPath, fileName)));
+      log(chalk`{green ${response.statusText}} {blue ${fileName} saved}`);   
+      return response.data.pipe(fs.createWriteStream(path.join(dataPath, fileName)));
+    })
+    .catch( (error: any) => {
+      log('Download Error: ', error);
     });
   }
 
-  private getDataEndpoint(containerId: string, fileName: string) {
+  private getDataEndpoint(containerId: string, fileName: string): string {
     if (/asset-[a-z\.]+$/.test(fileName)) {
       return `https://${this.config.host}/any/path/${fileName}`;
     } else {
@@ -274,7 +272,115 @@ export class LoPackageExporter {
     }
   }
 
+  private setAxiInstance(accessToken: string) {
+    this.axi = axios.create({
+      httpsAgent: new https.Agent({  
+        rejectUnauthorized: rejectSelfSignedCert
+      }),
+      headers: {
+        'authorization': accessToken
+      }
+    });
+  }
 
+
+  private copyUIBuildIntoDirs(){
+    log(chalk.magenta('Copy UI files into build directories ...'));
+    return Promise.mapSeries(FILTER_LIST, LO => {
+        let pathToUI = null;
+        let separator = IS_WIN ? '\\' : '/';
+        if (CONFIG_JSON.runEnv === RUN_ENV_SCORM) {
+            pathToUI = getScormDataDirectory(LO.containerId).split(separator);
+        } else if (CONFIG_JSON.runEnv === RUN_ENV_STANDALONE) {
+            pathToUI = getDataDirectory(LO.containerId).split(separator);
+        } else {
+            printError('Package "runEnv" property is invalid: ' + CONFIG_JSON.runEnv);
+            return;
+        }
+        pathToUI.pop();
+        pathToUI.pop();
+        pathToUI = pathToUI.join('/');
+            
+        return fileExists(`${pathToUI}/index.html`)
+        .then( () => {
+            console.log(`Skip UI: ${chalk.cyan(LO.containerId)}`)
+        })
+        .catch( e => {
+            console.log(`Copy UI: ${chalk.magenta(LO.containerId)}`);
+            return copyUiToPath(LO, pathToUI);
+        })
+    });
+}
+
+function copyUiToPath(LO, pathToUI) {
+    if(!LO.product) return printError(LO.containerId + ": Could not identify product type");
+
+    if(!pathToUI) {
+        printError('pathToUI could not be found.');
+        return;
+    }
+
+    let scriptFont = {
+        'arabic': 'NotoNaskhArabicUI-*',
+        'bengali': 'NotoSansBengaliUI-*',
+        'burmese': 'NotoSansMyanmarUI-*',
+        'devanagari': 'NotoSansDevanagariUI-*',
+        'ethiopic': 'NotoSansEthiopic-*',
+        // 'georgian': '', (none yet)
+        'gujarati': 'NotoSansGujaratiUI-*',
+        // 'gurmukhi': '', East Punjabi (none yet)
+        'hanji': 'NotoSansTC-*',
+        'hanji-jiantizi': 'NotoSansSC-*',
+        'hebrew': 'NotoSansHebrew-*',
+        'jiantizi': 'NotoSansSC-*',
+        'kana': 'NotoSansCJKjp-*',
+        'korean': 'NotoSansKR-*',
+        // 'lao': '', (none yet)
+        'nastaliq': 'NotoNastaliqUrdu-*',
+        'tamil': 'NotoSansTamilUI-*',
+        'thai': 'NotoSansThaiUI-*',
+    };
+
+    let base = 'dist/' + getCurrentPkgVersContainerName();
+    let gulpsrc = [
+                    base + '/build-' + LO.product.toLowerCase() + '.js',
+                    base + '/index.html',
+                    base + '/public/fonts.css',
+                    base + '/public/nflc-logo2.jpg',
+                    base + '/public/MaterialIcons-Regular*',
+                    base + '/public/videogular*',
+                    base + '/public/NotoSansUI-*',
+                    base + '/public/LICENSE*.txt'
+                ];
+    for (let script of LO.scripts) {
+        if (scriptFont[script]) {
+            gulpsrc.push(base + '/public/' + scriptFont[script]);
+        }
+    }
+
+    if( LO.product.toUpperCase() === 'AO') {
+        gulpsrc.push(base + '/public/nflc-logo2.png');
+        gulpsrc.push(base + '/public/Pattern1.png');
+
+        if (['LCR','LMC'].indexOf(`${LO.lessontype}`.toUpperCase()) !== -1){
+            // Listening AO
+            gulpsrc.push(base + '/public/beep.mp3');
+            gulpsrc.push(base + '/public/kennedy.mp3');
+            gulpsrc.push(base + '/public/littlebeep.mp3');
+            gulpsrc.push(base + '/public/passage*.mp3');
+        } else {
+            //TODO - test this on a reading AO
+            gulpsrc.push('!/videogular*');
+        }
+    }
+    return new Promise(function(resolve,reject){
+        return gulp.src(gulpsrc, { "base": base })
+                //.pipe(debug({title:'debug:'}))
+                .pipe(gulp.dest(pathToUI))
+                .on('finish', resolve)
+                .on('error', reject);            
+    });
+  }  
 }
 
 
