@@ -15,6 +15,7 @@ const rejectSelfSignedCert = true;
 const agent = new https.Agent({  
   rejectUnauthorized: rejectSelfSignedCert
 });
+const IS_WIN = /^win/.test(process.platform);
 
 export enum XloStateEnum {
   NOCONFIG = 1,
@@ -37,6 +38,7 @@ export interface IXloYaml {
 export class LoPackageExporter {
   public force: boolean = false;
   private axi: any;
+  private tmpDirName: string = '__TEMP__';
 
   constructor(
     private config: IXloYaml = { host: null, user: ''},
@@ -233,9 +235,10 @@ export class LoPackageExporter {
   }
 
   private getDataDir(runEnv: XloRunEnv, containerId: string): string {
+    // assuming SCORM package if not standalone
     return runEnv === XloRunEnv.STANDALONE ?
     path.join(this.packageDir, 'data', containerId) :
-    path.join(this.packageDir, containerId, 'data', containerId);
+    path.join(this.packageDir, this.tmpDirName, containerId, 'data', containerId);
   }
 
   private async fileExists(target: string) {
@@ -283,36 +286,35 @@ export class LoPackageExporter {
     });
   }
 
+  private downloadUI() {
+    // do stuff into a tmp directory
+  }
 
-  private copyUIBuildIntoDirs(){
+
+  private async copyUIBuildIntoDirs(runEnv: XloRunEnv){
     log(chalk.magenta('Copy UI files into build directories ...'));
-    return Promise.mapSeries(FILTER_LIST, LO => {
-        let pathToUI = null;
-        let separator = IS_WIN ? '\\' : '/';
-        if (CONFIG_JSON.runEnv === RUN_ENV_SCORM) {
-            pathToUI = getScormDataDirectory(LO.containerId).split(separator);
-        } else if (CONFIG_JSON.runEnv === RUN_ENV_STANDALONE) {
-            pathToUI = getDataDirectory(LO.containerId).split(separator);
+    const pees: any[] = [];
+    for (const LO of this.filterList) {
+      const separator = IS_WIN ? '\\' : '/';
+      const pathPartsToUI = this.getDataDir(runEnv, LO.containerId).split(separator);
+      pathPartsToUI.pop();
+      pathPartsToUI.pop();
+      const pathToUI = pathPartsToUI.join('/');
+      const p: Promise<any> = this.fileExists(`${pathToUI}/index.html`).then( exists => { 
+        if (exists && this.force === false) {
+          log(`Skip UI: ${chalk.cyan(LO.containerId)}`);
+          return Promise.resolve();
         } else {
-            printError('Package "runEnv" property is invalid: ' + CONFIG_JSON.runEnv);
-            return;
-        }
-        pathToUI.pop();
-        pathToUI.pop();
-        pathToUI = pathToUI.join('/');
-            
-        return fileExists(`${pathToUI}/index.html`)
-        .then( () => {
-            console.log(`Skip UI: ${chalk.cyan(LO.containerId)}`)
-        })
-        .catch( e => {
-            console.log(`Copy UI: ${chalk.magenta(LO.containerId)}`);
-            return copyUiToPath(LO, pathToUI);
-        })
-    });
+          log(`Copy UI: ${chalk.magenta(LO.containerId)}`);
+          return this.copyUiToPath(LO, pathToUI);
+        }  
+      });
+      pees.push(p);
+    }
+    return pees.reduce((accumulator, response) => accumulator.then(response));
 }
 
-function copyUiToPath(LO, pathToUI) {
+private copyUiToPath(LO, pathToUI) {
     if(!LO.product) return printError(LO.containerId + ": Could not identify product type");
 
     if(!pathToUI) {
