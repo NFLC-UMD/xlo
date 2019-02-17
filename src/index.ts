@@ -8,6 +8,7 @@ const chalk = require('chalk');
 const prompts = require('prompts');
 const axios = require('axios');
 const makeDir = require('make-dir');
+const semver = require('semver');
 // tslint:disable-next-line:no-console
 const log = console.log;
 const rejectSelfSignedCert = true;
@@ -33,6 +34,14 @@ export interface IXloYaml {
   host: string|null;
   user: string;
   package?: any;
+}
+interface IFileInfo {
+  ui?: string;
+  container?: string;
+  name: string;
+  size?: number;
+  mtime?: string | Date;
+  text?: string;
 }
 
 export class LoPackageExporter {
@@ -286,7 +295,59 @@ export class LoPackageExporter {
     });
   }
 
-  private downloadUI() {
+  private async getLatestUiContainerName() {
+    const response = await this.axi.get(`https://${this.config.host}/api/UI`);
+    const uiContainerList: any[] = response.data;
+    // get "LOUI_v#-#" containers
+    const re: RegExp = /^LOUI_v(\d+)-(\d+)+$/;
+    const LOUIs: IFileInfo[] = uiContainerList.filter(
+      (c: IFileInfo) => {
+        return re.test(c.name);
+      });
+    // get latest version "LOUI_v#-#"
+    const versions: string[] = [];
+    for (const loui of LOUIs) {
+      const m: RegExpMatchArray | null = loui.name.match(re);
+      if(m) {
+        versions.push(m[1] + '.' + m[2] + '.0');
+      }
+    }
+    let latest = semver.maxSatisfying(versions, '*');
+    const tmp = latest.split('.');
+    tmp.pop();
+    latest = tmp.join('-');
+    const latestCntr: IFileInfo | undefined = LOUIs.find(ui => ui.name === `LOUI_v${latest}`);
+    let latestCtrName = null;
+    if (latestCntr) {
+      latestCtrName = latestCntr.name;
+    }
+    return latestCtrName;
+  }
+
+  private async downloadUI(uiContainerName: string) {
+    const responses = await axios.all([
+      this.axi.get(`https://${this.config.host}/api/UI/${uiContainerName}/files`),
+      this.axi.get(`https://${this.config.host}/api/UI/public/files`)
+    ]);
+    const uiFileList = responses[0].data;
+    const publicFileList = responses[1].data;
+    const pees: any[] = [];
+    for (const file of uiFileList) {
+      const p = this.axi.get(`https://${this.config.host}/api/UI/${uiContainerName}/download/${file}`);
+      pees.push(p);
+    }
+    const uiFiles = await Promise.all(pees);
+    // now write to disk
+
+    const pees2: any[] = [];
+    for (const file of publicFileList) {
+      const p = this.axi.get(`https://${this.config.host}/api/UI/public/download/${file}`);
+      pees2.push(p);
+    }
+    const publicFiles = await Promise.all(pees2);
+    // now write to disk
+
+
     // do stuff into a tmp directory
   }
 
