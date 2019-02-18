@@ -197,7 +197,7 @@ export class LoPackageExporter {
         jso.containerId = jso.id;
       }
       log('Object #id: ', chalk.magenta(jso.containerId),' with #', chalk.magenta(filelist.length), 'files');
-      log(`Status File                Saved To`);
+      log(`Status File                    Saved To`);
       const dataPath = this.getDataDir(runEnv, jso.containerId);
       const contentFilePath = path.join(dataPath, 'content.json');
       fs.writeFileSync(contentFilePath, JSON.stringify(jso), { encoding: 'utf8'});
