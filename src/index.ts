@@ -35,19 +35,18 @@ export interface IXloYaml {
   user: string;
   package?: any;
 }
-interface IFileInfo {
-  ui?: string;
-  container?: string;
+export interface IFileInfo {
+  container: string;
   name: string;
   size?: number;
   mtime?: string | Date;
-  text?: string;
 }
 
 export class LoPackageExporter {
   public force: boolean = false;
   private axi: any;
-  private tmpDirName: string = '__TEMP__';
+  private dataDirName: string = '__DATA__';
+  private uiDirName: string = '__UI__';
 
   constructor(
     private config: IXloYaml = { host: null, user: ''},
@@ -157,10 +156,20 @@ export class LoPackageExporter {
     await axios.all([this.setLangs(), this.setLearningObjectList()]);
     // create directory structure
     const plist: any[] = [];
+    plist.push(makeDir(path.join(this.packageDir, this.dataDirName)));
+    plist.push(makeDir(path.join(this.packageDir, this.uiDirName)));
+    plist.push(makeDir(path.join(this.packageDir, this.uiDirName, 'loui')));
+    plist.push(makeDir(path.join(this.packageDir, this.uiDirName, 'public')));
     for (const LO of this.filterList) {
       plist.push(makeDir(this.getDataDir(runEnv, LO.containerId)));
     }
     await Promise.all(plist);
+
+    // get UI files
+    const datas = await this.getLatestUiFiles();
+    await this.downloadUiFileGroup(datas[0]); // LOUI_v#-##
+    await this.downloadUiFileGroup(datas[1]); // public container
+    
     // get data and file list endpoints
     const urlPair: any[] = [];
     for (const LO of this.filterList) {
@@ -187,6 +196,7 @@ export class LoPackageExporter {
         jso.containerId = jso.id;
       }
       log('Object #id: ', chalk.magenta(jso.containerId),' with #', chalk.magenta(filelist.length), 'files');
+      log(`Status File      Saved To`);
       const dataPath = this.getDataDir(runEnv, jso.containerId);
       const contentFilePath = path.join(dataPath, 'content.json');
       fs.writeFileSync(contentFilePath, JSON.stringify(jso), { encoding: 'utf8'});
@@ -201,6 +211,7 @@ export class LoPackageExporter {
                   this.filterList[x].scripts.push(lang.script);
               }
           }
+          // equiv of lodash _.uniq()
           this.filterList[x].scripts = [...new Set(this.filterList[x].scripts)];
       }
       catch(e) {
@@ -239,7 +250,6 @@ export class LoPackageExporter {
       return Promise.all(downloads);
     }), Promise.resolve());
 
-
     return 'pack done';
   }
 
@@ -247,7 +257,7 @@ export class LoPackageExporter {
     // assuming SCORM package if not standalone
     return runEnv === XloRunEnv.STANDALONE ?
     path.join(this.packageDir, 'data', containerId) :
-    path.join(this.packageDir, this.tmpDirName, containerId, 'data', containerId);
+    path.join(this.packageDir, this.dataDirName, containerId, 'data', containerId);
   }
 
   private async fileExists(target: string) {
@@ -268,8 +278,10 @@ export class LoPackageExporter {
       responseType:'stream'
     })
     .then( (response: any) => {
-      log(chalk`{green ${response.statusText}} {blue ${fileName} saved}`);   
-      return response.data.pipe(fs.createWriteStream(path.join(dataPath, fileName)));
+      const savePath = path.join(dataPath, fileName);
+      const color = response.statusText === 'OK' ? 'green' : 'red';
+      log(chalk`{${color} ${response.statusText}}  {blue ${fileName}}  {green ${savePath}}`);   
+      return response.data.pipe(fs.createWriteStream(savePath));
     })
     .catch( (error: any) => {
       log('Download Error: ', error);
@@ -295,7 +307,10 @@ export class LoPackageExporter {
     });
   }
 
-  private async getLatestUiContainerName() {
+  /**
+   * return [uiFiles, publicFiles]
+   */
+  private async getLatestUiFiles() {
     const response = await this.axi.get(`https://${this.config.host}/api/UI`);
     const uiContainerList: any[] = response.data;
     // get "LOUI_v#-#" containers
@@ -317,133 +332,129 @@ export class LoPackageExporter {
     tmp.pop();
     latest = tmp.join('-');
     const latestCntr: IFileInfo | undefined = LOUIs.find(ui => ui.name === `LOUI_v${latest}`);
-    let latestCtrName = null;
-    if (latestCntr) {
-      latestCtrName = latestCntr.name;
+    if (!latestCntr) {
+      throw new Error(`Cannot find "LOUI_v${latest}" in list with length: ${LOUIs.length}`);
     }
-    return latestCtrName;
-  }
-
-  private async downloadUI(uiContainerName: string) {
     const responses = await axios.all([
-      this.axi.get(`https://${this.config.host}/api/UI/${uiContainerName}/files`),
+      this.axi.get(`https://${this.config.host}/api/UI/${latestCntr.name}/files`),
       this.axi.get(`https://${this.config.host}/api/UI/public/files`)
     ]);
-    const uiFileList = responses[0].data;
-    const publicFileList = responses[1].data;
-    const pees: any[] = [];
-    for (const file of uiFileList) {
-      const p = this.axi.get(`https://${this.config.host}/api/UI/${uiContainerName}/download/${file}`);
-      pees.push(p);
-    }
-    const uiFiles = await Promise.all(pees);
-    // now write to disk
-
-    const pees2: any[] = [];
-    for (const file of publicFileList) {
-      const p = this.axi.get(`https://${this.config.host}/api/UI/public/download/${file}`);
-      pees2.push(p);
-    }
-    const publicFiles = await Promise.all(pees2);
-    // now write to disk
-
-
-    // do stuff into a tmp directory
+    return [responses[0].data, responses[1].data];
   }
 
-
-  private async copyUIBuildIntoDirs(runEnv: XloRunEnv){
-    log(chalk.magenta('Copy UI files into build directories ...'));
+  private async downloadUiFileGroup(uiFileList: IFileInfo[]) {
     const pees: any[] = [];
-    for (const LO of this.filterList) {
-      const separator = IS_WIN ? '\\' : '/';
-      const pathPartsToUI = this.getDataDir(runEnv, LO.containerId).split(separator);
-      pathPartsToUI.pop();
-      pathPartsToUI.pop();
-      const pathToUI = pathPartsToUI.join('/');
-      const p: Promise<any> = this.fileExists(`${pathToUI}/index.html`).then( exists => { 
-        if (exists && this.force === false) {
-          log(`Skip UI: ${chalk.cyan(LO.containerId)}`);
-          return Promise.resolve();
-        } else {
-          log(`Copy UI: ${chalk.magenta(LO.containerId)}`);
-          return this.copyUiToPath(LO, pathToUI);
-        }  
+    for (const file of uiFileList) {
+      const p = this.axi.get(`https://${this.config.host}/api/UI/${file.container}/download/${file.name}`, {
+        responseType:'stream'
+      })
+      .then( (rs: any) => {
+        const uiDir = file.container === 'public' ? 'public' : 'loui';
+        const savePath = path.join(this.packageDir, this.uiDirName, uiDir, file.name);
+        const color = rs.statusText === 'OK' ? 'green' : 'red';
+        log(chalk`{${color} ${rs.statusText}}  {blue ${file.name}}  {green ${path.join(this.uiDirName, uiDir)}}`);   
+        return rs.data.pipe(fs.createWriteStream(savePath));
+      })
+      .catch( (error: any) => {
+        log('Download Error: ', error);
       });
       pees.push(p);
     }
-    return pees.reduce((accumulator, response) => accumulator.then(response));
-}
+    return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
+  }
 
-private copyUiToPath(LO, pathToUI) {
-    if(!LO.product) return printError(LO.containerId + ": Could not identify product type");
+  // private async copyUIBuildIntoDirs(runEnv: XloRunEnv) {
+  //   log(chalk.magenta('Copy UI files into build directories ...'));
+  //   const pees: any[] = [];
+  //   for (const LO of this.filterList) {
+  //     const separator = IS_WIN ? '\\' : '/';
+  //     const pathPartsToUI = this.getDataDir(runEnv, LO.containerId).split(separator);
+  //     pathPartsToUI.pop();
+  //     pathPartsToUI.pop();
+  //     const pathToUI = pathPartsToUI.join('/');
+  //     const p: Promise<any> = this.fileExists(`${pathToUI}/index.html`).then( exists => { 
+  //       if (exists && this.force === false) {
+  //         log(`Skip UI: ${chalk.cyan(LO.containerId)}`);
+  //         return Promise.resolve();
+  //       } else {
+  //         log(`Copy UI: ${chalk.magenta(LO.containerId)}`);
+  //         return this.copyUiToPath(LO, pathToUI);
+  //       }  
+  //     });
+  //     pees.push(p);
+  //   }
+  //   return pees.reduce((accumulator, response) => accumulator.then(response));
+  // }
 
-    if(!pathToUI) {
-        printError('pathToUI could not be found.');
-        return;
-    }
+// private copyUiToPath(LO, pathToUI) {
+//     if(!LO.product) return printError(LO.containerId + ": Could not identify product type");
 
-    let scriptFont = {
-        'arabic': 'NotoNaskhArabicUI-*',
-        'bengali': 'NotoSansBengaliUI-*',
-        'burmese': 'NotoSansMyanmarUI-*',
-        'devanagari': 'NotoSansDevanagariUI-*',
-        'ethiopic': 'NotoSansEthiopic-*',
-        // 'georgian': '', (none yet)
-        'gujarati': 'NotoSansGujaratiUI-*',
-        // 'gurmukhi': '', East Punjabi (none yet)
-        'hanji': 'NotoSansTC-*',
-        'hanji-jiantizi': 'NotoSansSC-*',
-        'hebrew': 'NotoSansHebrew-*',
-        'jiantizi': 'NotoSansSC-*',
-        'kana': 'NotoSansCJKjp-*',
-        'korean': 'NotoSansKR-*',
-        // 'lao': '', (none yet)
-        'nastaliq': 'NotoNastaliqUrdu-*',
-        'tamil': 'NotoSansTamilUI-*',
-        'thai': 'NotoSansThaiUI-*',
-    };
+//     if(!pathToUI) {
+//         printError('pathToUI could not be found.');
+//         return;
+//     }
 
-    let base = 'dist/' + getCurrentPkgVersContainerName();
-    let gulpsrc = [
-                    base + '/build-' + LO.product.toLowerCase() + '.js',
-                    base + '/index.html',
-                    base + '/public/fonts.css',
-                    base + '/public/nflc-logo2.jpg',
-                    base + '/public/MaterialIcons-Regular*',
-                    base + '/public/videogular*',
-                    base + '/public/NotoSansUI-*',
-                    base + '/public/LICENSE*.txt'
-                ];
-    for (let script of LO.scripts) {
-        if (scriptFont[script]) {
-            gulpsrc.push(base + '/public/' + scriptFont[script]);
-        }
-    }
+//     let scriptFont = {
+//         'arabic': 'NotoNaskhArabicUI-*',
+//         'bengali': 'NotoSansBengaliUI-*',
+//         'burmese': 'NotoSansMyanmarUI-*',
+//         'devanagari': 'NotoSansDevanagariUI-*',
+//         'ethiopic': 'NotoSansEthiopic-*',
+//         // 'georgian': '', (none yet)
+//         'gujarati': 'NotoSansGujaratiUI-*',
+//         // 'gurmukhi': '', East Punjabi (none yet)
+//         'hanji': 'NotoSansTC-*',
+//         'hanji-jiantizi': 'NotoSansSC-*',
+//         'hebrew': 'NotoSansHebrew-*',
+//         'jiantizi': 'NotoSansSC-*',
+//         'kana': 'NotoSansCJKjp-*',
+//         'korean': 'NotoSansKR-*',
+//         // 'lao': '', (none yet)
+//         'nastaliq': 'NotoNastaliqUrdu-*',
+//         'tamil': 'NotoSansTamilUI-*',
+//         'thai': 'NotoSansThaiUI-*',
+//     };
 
-    if( LO.product.toUpperCase() === 'AO') {
-        gulpsrc.push(base + '/public/nflc-logo2.png');
-        gulpsrc.push(base + '/public/Pattern1.png');
+//     let base = 'dist/' + getCurrentPkgVersContainerName();
+//     let gulpsrc = [
+//                     base + '/build-' + LO.product.toLowerCase() + '.js',
+//                     base + '/index.html',
+//                     base + '/public/fonts.css',
+//                     base + '/public/nflc-logo2.jpg',
+//                     base + '/public/MaterialIcons-Regular*',
+//                     base + '/public/videogular*',
+//                     base + '/public/NotoSansUI-*',
+//                     base + '/public/LICENSE*.txt'
+//                 ];
+//     for (let script of LO.scripts) {
+//         if (scriptFont[script]) {
+//             gulpsrc.push(base + '/public/' + scriptFont[script]);
+//         }
+//     }
 
-        if (['LCR','LMC'].indexOf(`${LO.lessontype}`.toUpperCase()) !== -1){
-            // Listening AO
-            gulpsrc.push(base + '/public/beep.mp3');
-            gulpsrc.push(base + '/public/kennedy.mp3');
-            gulpsrc.push(base + '/public/littlebeep.mp3');
-            gulpsrc.push(base + '/public/passage*.mp3');
-        } else {
-            //TODO - test this on a reading AO
-            gulpsrc.push('!/videogular*');
-        }
-    }
-    return new Promise(function(resolve,reject){
-        return gulp.src(gulpsrc, { "base": base })
-                //.pipe(debug({title:'debug:'}))
-                .pipe(gulp.dest(pathToUI))
-                .on('finish', resolve)
-                .on('error', reject);            
-    });
-  }  
+//     if( LO.product.toUpperCase() === 'AO') {
+//         gulpsrc.push(base + '/public/nflc-logo2.png');
+//         gulpsrc.push(base + '/public/Pattern1.png');
+
+//         if (['LCR','LMC'].indexOf(`${LO.lessontype}`.toUpperCase()) !== -1){
+//             // Listening AO
+//             gulpsrc.push(base + '/public/beep.mp3');
+//             gulpsrc.push(base + '/public/kennedy.mp3');
+//             gulpsrc.push(base + '/public/littlebeep.mp3');
+//             gulpsrc.push(base + '/public/passage*.mp3');
+//         } else {
+//             //TODO - test this on a reading AO
+//             gulpsrc.push('!/videogular*');
+//         }
+//     }
+//     return new Promise(function(resolve,reject){
+//         return gulp.src(gulpsrc, { "base": base })
+//                 //.pipe(debug({title:'debug:'}))
+//                 .pipe(gulp.dest(pathToUI))
+//                 .on('finish', resolve)
+//                 .on('error', reject);            
+//     });
+//   }  
 }
 
 
