@@ -167,6 +167,7 @@ export class LoPackageExporter {
 
     // get UI files
     const datas = await this.getLatestUiFiles();
+    log(`Status File                Saved To`);
     await this.downloadUiFileGroup(datas[0]); // LOUI_v#-##
     await this.downloadUiFileGroup(datas[1]); // public container
     
@@ -196,7 +197,7 @@ export class LoPackageExporter {
         jso.containerId = jso.id;
       }
       log('Object #id: ', chalk.magenta(jso.containerId),' with #', chalk.magenta(filelist.length), 'files');
-      log(`Status File      Saved To`);
+      log(`Status File                Saved To`);
       const dataPath = this.getDataDir(runEnv, jso.containerId);
       const contentFilePath = path.join(dataPath, 'content.json');
       fs.writeFileSync(contentFilePath, JSON.stringify(jso), { encoding: 'utf8'});
@@ -239,7 +240,7 @@ export class LoPackageExporter {
         const target = path.join(fle[1], fle[2]);
         const p2: Promise<any> = this.fileExists(target).then( exists => { 
           if (exists && this.force === false) {
-            log(`Skipping download: ${chalk.cyan(fle[2])}`);
+            log(`Skip ${chalk.cyan(fle[2])}`);
             return Promise.resolve();
           } else {
             return this.downloadFile(fle[0], fle[1], fle[2]);
@@ -258,6 +259,9 @@ export class LoPackageExporter {
     return runEnv === XloRunEnv.STANDALONE ?
     path.join(this.packageDir, 'data', containerId) :
     path.join(this.packageDir, this.dataDirName, containerId, 'data', containerId);
+  }
+  private short(p: string) {
+    return p.replace(this.packageDir, '').replace(/[^/]+$/, '');
   }
 
   private async fileExists(target: string) {
@@ -280,7 +284,7 @@ export class LoPackageExporter {
     .then( (response: any) => {
       const savePath = path.join(dataPath, fileName);
       const color = response.statusText === 'OK' ? 'green' : 'red';
-      log(chalk`{${color} ${response.statusText}}  {blue ${fileName}}  {green ${savePath}}`);   
+      log(chalk`{${color} ${response.statusText}}     {blue ${fileName}}      {green ${this.short(savePath)}}`);   
       return response.data.pipe(fs.createWriteStream(savePath));
     })
     .catch( (error: any) => {
@@ -352,7 +356,7 @@ export class LoPackageExporter {
         const uiDir = file.container === 'public' ? 'public' : 'loui';
         const savePath = path.join(this.packageDir, this.uiDirName, uiDir, file.name);
         const color = rs.statusText === 'OK' ? 'green' : 'red';
-        log(chalk`{${color} ${rs.statusText}}  {blue ${file.name}}  {green ${path.join(this.uiDirName, uiDir)}}`);   
+        log(chalk`{${color} ${rs.statusText}}  {blue ${file.name}}            {green ${path.join(this.uiDirName, uiDir)}}`);   
         return rs.data.pipe(fs.createWriteStream(savePath));
       })
       .catch( (error: any) => {
