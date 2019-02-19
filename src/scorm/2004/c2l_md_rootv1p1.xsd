@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema elementFormDefault="qualified" targetNamespace="http://www.sumtotalsystems.com/xsd/c2l_md_rootv1p1" xmlsns="http://www.sumtotalsystems.com/xsd/c2l_md_rootv1p1" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:element name="c2lextensionmd">
+    <xsd:complexType>
+      <xsd:all>
+        <xsd:element name="lotype" type="xsd:string" minOccurs="0" />
+        <xsd:element name="modality" type="xsd:string" minOccurs="0" />
+        <xsd:element name="proflevel" type="xsd:string" minOccurs="0" />
+        <xsd:element name="language" type="xsd:string" minOccurs="0" />
+        <xsd:element name="topic" type="xsd:string" minOccurs="0" />
+        <xsd:element name="classification" type="xsd:string" minOccurs="0" />
+      </xsd:all>
+    </xsd:complexType>
+  </xsd:element>
+</xsd:schema>

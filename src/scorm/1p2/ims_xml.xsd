@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- filename=ims_xml.xsd -->
+<schema xmlns="http://www.w3.org/XML/1998/namespace" 
+        targetNamespace="http://www.w3.org/XML/1998/namespace" 
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+        elementFormDefault="qualified">
+	<!-- CHANGE HISTORY -->
+	<annotation>
+		<documentation>
+			2001-02-22: Thomas Wason initial creation
+		</documentation>
+		<documentation>
+			In namespace-aware XML processors, the &quot;xml&quot;
+		</documentation>
+		<documentation>
+			prefix is bound to the namespace name http://www.w3.org/XML/1998/namespace.
+		</documentation>
+		<documentation>
+			Do not reference this file in XML instances
+		</documentation>
+		<documentation>
+			Schawn Thropp: Changed the uriReference type to string type
+		</documentation>
+		<documentation>
+			2001-07-26: S Thropp: Changed the XSD namespace to point to
+		</documentation>
+		<documentation>
+			Schema of schemas for the 5/2/2001 W3C Recommendation
+		</documentation>
+		<documentation>
+			Changed the XSD types for base and link to xsd:anyURI
+		</documentation>
+	</annotation>
+	<attribute name="lang" type="xsd:language">
+		<annotation>
+			<documentation>
+				Refers to universal XML 1.0 lang attribute
+			</documentation>
+		</annotation>
+	</attribute>
+	<attribute name="base" type="xsd:anyURI">
+		<annotation>
+			<documentation>
+				Refers to XML Base: http://www.w3.org/TR/xmlbase
+			</documentation>
+		</annotation>
+	</attribute>
+	<attribute name="link" type="xsd:anyURI" />
+</schema>

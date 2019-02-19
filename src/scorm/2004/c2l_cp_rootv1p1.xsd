@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema elementFormDefault="qualified" targetNamespace="http://www.sumtotalsystems.com/xsd/c2l_cp_rootv1p1" xmlsns="http://www.sumtotalsystems.com/xsd/c2l_cp_rootv1p1" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:element name="ItemDataExtra">
+    <xsd:complexType>
+      <xsd:sequence minOccurs="0" maxOccurs="unbounded">
+        <xsd:element name="ItemData">
+          <xsd:complexType>
+            <xsd:all>
+              <xsd:element name="ItemSpecificData" minOccurs="0">
+                <xsd:complexType>
+                  <xsd:all>
+                    <xsd:element name="CourseData" minOccurs="0">
+                      <xsd:complexType>
+                        <xsd:all>
+                          <xsd:element name="PackageProperties" minOccurs="0">
+                            <xsd:complexType>
+                              <xsd:all>
+                                <xsd:element name="CourseDisplay" minOccurs="0">
+                                  <xsd:complexType>
+                                    <xsd:all>
+                                      <xsd:element name="ShowNavBar" type="xsd:string" minOccurs="0"/>
+                                      <xsd:element name="TOC" minOccurs="0">
+                                        <xsd:complexType>
+                                          <xsd:all>
+                                            <xsd:element name="MaxWidth" type="xsd:string" minOccurs="0" />
+                                            <xsd:element name="ScrollBar" type="xsd:string" minOccurs="0" />
+                                            <xsd:element name="BackgroundColor" type="xsd:string" minOccurs="0" />
+                                          </xsd:all>
+                                        </xsd:complexType>
+                                      </xsd:element>
+                                    </xsd:all>
+                                  </xsd:complexType>
+                                </xsd:element>
+                                <xsd:element name="Launch" minOccurs="0">
+                                  <xsd:complexType>
+                                    <xsd:all>
+                                      <xsd:element name="Width" type="xsd:string" minOccurs="0" />
+                                      <xsd:element name="Height" type="xsd:string" minOccurs="0" />
+                                      <xsd:element name="AllowResize" type="xsd:string" minOccurs="0" />
+                                    </xsd:all>
+                                  </xsd:complexType>
+                                </xsd:element>
+                              </xsd:all>
+                            </xsd:complexType>
+                          </xsd:element>
+                        </xsd:all>
+                      </xsd:complexType>
+                    </xsd:element>
+                  </xsd:all>
+                </xsd:complexType>
+              </xsd:element>
+            </xsd:all>
+            <xsd:attribute name="Identifier" type="xsd:string" />
+            <xsd:attribute name="Type" type="xsd:string" />
+          </xsd:complexType>
+        </xsd:element>
+      </xsd:sequence>
+    </xsd:complexType>
+  </xsd:element>
+</xsd:schema>
