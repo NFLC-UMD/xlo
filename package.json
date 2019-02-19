@@ -8,7 +8,7 @@
     "start": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/xlo-cli.ts",
     "testjest": "jest --config jestconfig.json",
     "test": "sudo npm i -g && xlo",
-    "build": "tsc -p .",
+    "build": "tsc -p . && cp -R ./src/scorm ./lib",
     "refresh": "rm -rf ./node_modules ./package-lock.json && npm install",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
     "lint": "tslint -p tsconfig.json",
@@ -52,9 +52,13 @@
     "commander": "^2.19.0",
     "figlet": "^1.2.1",
     "js-yaml": "^3.12.1",
+    "log-frame": "^1.0.5",
+    "logf-spinner": "^1.2.3",
     "make-dir": "^2.0.0",
+    "map-stream": "0.0.7",
     "path": "^0.12.7",
     "prompts": "^2.0.2",
-    "semver": "^5.6.0"
+    "semver": "^5.6.0",
+    "vinyl-fs": "^3.0.3"
   }
 }

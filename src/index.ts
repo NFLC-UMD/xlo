@@ -9,6 +9,11 @@ const prompts = require('prompts');
 const axios = require('axios');
 const makeDir = require('make-dir');
 const semver = require('semver');
+const { LogFrame } = require('log-frame');
+const { Spinner } = require('logf-spinner');
+const map = require('map-stream');
+const vfs = require('vinyl-fs');
+
 // tslint:disable-next-line:no-console
 const log = console.log;
 const rejectSelfSignedCert = true;
@@ -24,16 +29,24 @@ export enum XloStateEnum {
   PACKAGED = 4,
   INVALIDDIR = 5
 }
+
 export enum XloRunEnv {
   SCORM2004 = 1,
   SCORM1P2 = 2,
   STANDALONE = 3
 }
+
+export interface IXloPackage {
+  productType: string;
+  filter: object;
+}
+
 export interface IXloYaml {
   host: string|null;
   user: string;
-  package?: any;
+  package: IXloPackage;
 }
+
 export interface IFileInfo {
   container: string;
   name: string;
@@ -48,7 +61,7 @@ export class LoPackageExporter {
   private uiDirName: string = '__UI__';
 
   constructor(
-    private config: IXloYaml = { host: null, user: ''},
+    private config: IXloYaml = { host: null, user: '', package: {productType: '', filter: {}}},
     private packageDir: string = process.cwd(),
     private accessToken: string = '',
     private langs: any[] = [],
@@ -158,8 +171,8 @@ export class LoPackageExporter {
     const plist: any[] = [];
     plist.push(makeDir(path.join(this.packageDir, this.dataDirName)));
     plist.push(makeDir(path.join(this.packageDir, this.uiDirName)));
-    plist.push(makeDir(path.join(this.packageDir, this.uiDirName, 'loui')));
-    plist.push(makeDir(path.join(this.packageDir, this.uiDirName, 'public')));
+    plist.push(makeDir(this.getLouiDirPath()));
+    plist.push(makeDir(this.getPublicDirPath()));
     for (const LO of this.filterList) {
       plist.push(makeDir(this.getDataDir(runEnv, LO.containerId)));
     }
@@ -249,26 +262,32 @@ export class LoPackageExporter {
       return Promise.all(downloads);
     }), Promise.resolve());
 
-    const indexHtmlPath = path.join(this.packageDir, this.uiDirName, 'loui', 'index.html');
+    const indexHtmlPath = path.join(this.getLouiDirPath(), 'index.html');
     const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
     if (indexHtml.indexOf('publicUpOne=true;')) {
       fs.writeFileSync(indexHtmlPath, indexHtml.replace('publicUpOne=true;', 'publicUpOne=false;'), 'utf8');
     }
-
-    // copy UI into dirs
-
+    log('Copy UI files to each object directory.');
+    await this.copyUIBuildIntoDirs(runEnv);
+    log('Copy SCORM files to each object directory.');
+    await this.addScormFiles(runEnv);
 
     return 'pack done';
   }
-
+  private getUiRootDir(runEnv: XloRunEnv, containerId: string): string {
+    // assuming SCORM package if not standalone
+    return runEnv === XloRunEnv.STANDALONE ?
+      this.packageDir :
+      path.join(this.packageDir, this.dataDirName, containerId);
+  }
   private getDataDir(runEnv: XloRunEnv, containerId: string): string {
     // assuming SCORM package if not standalone
     return runEnv === XloRunEnv.STANDALONE ?
-    path.join(this.packageDir, 'data', containerId) :
-    path.join(this.packageDir, this.dataDirName, containerId, 'data', containerId);
+      path.join(this.packageDir, 'data', containerId) :
+      path.join(this.packageDir, this.dataDirName, containerId, 'data', containerId);
   }
   private short(p: string) {
-    return p.replace(this.packageDir, '').replace(/[^/]+$/, '');
+    return p.replace(this.packageDir, '').replace(/\/([^/]+)$/, (a, b) => '/' + chalk.magenta(b));
   }
 
   private async fileExists(target: string): Promise<boolean> {
@@ -291,7 +310,7 @@ export class LoPackageExporter {
     .then( (response: any) => {
       const savePath = path.join(dataPath, fileName);
       const color = response.statusText === 'OK' ? 'green' : 'red';
-      log(chalk`{${color} ${response.statusText}} {green ${this.short(savePath)}} {blue ${fileName}}`);   
+      log(chalk`{${color} ${response.statusText}} ` + this.short(savePath));   
       return response.data.pipe(fs.createWriteStream(savePath));
     })
     .catch( (error: any) => {
@@ -356,8 +375,12 @@ export class LoPackageExporter {
   private async downloadUiFileGroup(uiFileList: IFileInfo[]) {
     const pees: any[] = [];
     for (const file of uiFileList) {
-      const uiDir = file.container === 'public' ? 'public' : 'loui';
-      const savePath = path.join(this.packageDir, this.uiDirName, uiDir, file.name);
+      let savePath: string;
+      if (file.container === 'public') {
+        savePath = path.join(this.getPublicDirPath(), file.name);
+      } else {
+        savePath = path.join(this.getLouiDirPath(), file.name);
+      }
       const exists = await this.fileExists(savePath);
       if (!exists || this.force) {
         const p = this.axi.get(`https://${this.config.host}/api/UI/${file.container}/download/${file.name}`, {
@@ -365,7 +388,7 @@ export class LoPackageExporter {
         })
         .then( (rs: any) => {
           const color = rs.statusText === 'OK' ? 'green' : 'red';
-          log(chalk`{${color} ${rs.statusText}} {green ${path.join(this.uiDirName, uiDir)}} {blue ${file.name}}`);   
+          log(chalk`{${color} ${rs.statusText}} ` + this.short(savePath));   
           return rs.data.pipe(fs.createWriteStream(savePath));
         })
         .catch( (error: any) => {
@@ -380,93 +403,272 @@ export class LoPackageExporter {
   }
 
   private async copyUIBuildIntoDirs(runEnv: XloRunEnv) {
-    log(chalk.magenta('Copy UI files into build directories ...'));
     const pees: any[] = [];
+    // log(chalk.magenta('Copy UI files to object directories.'));
     for (const LO of this.filterList) {
-      const pathPartsToUI = this.getDataDir(runEnv, LO.containerId).split(path.sep);
-      pathPartsToUI.pop();
-      pathPartsToUI.pop();
-      const pathToUI = pathPartsToUI.join('/');
+      const pathToUI = this.getUiRootDir(runEnv, LO.containerId);
       const exists = await this.fileExists(`${pathToUI}/index.html`);
       if (!exists || this.force) {
-        const p2 = this.copyUiToPath(LO, pathToUI);
-        pees.push(p2);
-      } else {
-        log(`Skip UI: ${chalk.cyan(LO.containerId)}`);
+        pees.push(this.copyUiToPath(LO, pathToUI));
       }
     }
-    return pees.reduce((accumulator, response) => accumulator.then(response));
+    return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
   }
 
-// private copyUiToPath(LO, pathToUI) {
-//     if(!LO.product) return printError(LO.containerId + ": Could not identify product type");
+private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
+    if(!LO.product) {
+      throw new Error (LO.containerId + ": Could not identify product type");
+    }
+    if(!pathToUI) {
+        throw new Error('pathToUI could not be found.');
+    }
 
-//     if(!pathToUI) {
-//         printError('pathToUI could not be found.');
-//         return;
-//     }
+    const scriptFont: any = {
+        'arabic': 'NotoNaskhArabicUI-*',
+        'bengali': 'NotoSansBengaliUI-*',
+        'burmese': 'NotoSansMyanmarUI-*',
+        'devanagari': 'NotoSansDevanagariUI-*',
+        'ethiopic': 'NotoSansEthiopic-*',
+        // 'georgian': '', (none yet)
+        'gujarati': 'NotoSansGujaratiUI-*',
+        // 'gurmukhi': '', East Punjabi (none yet)
+        'hanji': 'NotoSansTC-*',
+        'hanji-jiantizi': 'NotoSansSC-*',
+        'hebrew': 'NotoSansHebrew-*',
+        'jiantizi': 'NotoSansSC-*',
+        'kana': 'NotoSansCJKjp-*',
+        'korean': 'NotoSansKR-*',
+        // 'lao': '', (none yet)
+        'nastaliq': 'NotoNastaliqUrdu-*',
+        'tamil': 'NotoSansTamilUI-*',
+        'thai': 'NotoSansThaiUI-*',
+    };
 
-//     let scriptFont = {
-//         'arabic': 'NotoNaskhArabicUI-*',
-//         'bengali': 'NotoSansBengaliUI-*',
-//         'burmese': 'NotoSansMyanmarUI-*',
-//         'devanagari': 'NotoSansDevanagariUI-*',
-//         'ethiopic': 'NotoSansEthiopic-*',
-//         // 'georgian': '', (none yet)
-//         'gujarati': 'NotoSansGujaratiUI-*',
-//         // 'gurmukhi': '', East Punjabi (none yet)
-//         'hanji': 'NotoSansTC-*',
-//         'hanji-jiantizi': 'NotoSansSC-*',
-//         'hebrew': 'NotoSansHebrew-*',
-//         'jiantizi': 'NotoSansSC-*',
-//         'kana': 'NotoSansCJKjp-*',
-//         'korean': 'NotoSansKR-*',
-//         // 'lao': '', (none yet)
-//         'nastaliq': 'NotoNastaliqUrdu-*',
-//         'tamil': 'NotoSansTamilUI-*',
-//         'thai': 'NotoSansThaiUI-*',
-//     };
+    const base = this.getLouiDirPath();
+    const gulpsrc = [
+                    base + '/build-' + LO.product.toLowerCase() + '.js',
+                    base + '/index.html',
+                    base + '/public/fonts.css',
+                    base + '/public/nflc-logo2.jpg',
+                    base + '/public/MaterialIcons-Regular*',
+                    base + '/public/videogular*',
+                    base + '/public/NotoSansUI-*',
+                    base + '/public/LICENSE*.txt'
+                ];
+    for (const script of LO.scripts) {
+        if (scriptFont[script]) {
+            gulpsrc.push(base + '/public/' + scriptFont[script]);
+        }
+    }
 
-//     let base = 'dist/' + getCurrentPkgVersContainerName();
-//     let gulpsrc = [
-//                     base + '/build-' + LO.product.toLowerCase() + '.js',
-//                     base + '/index.html',
-//                     base + '/public/fonts.css',
-//                     base + '/public/nflc-logo2.jpg',
-//                     base + '/public/MaterialIcons-Regular*',
-//                     base + '/public/videogular*',
-//                     base + '/public/NotoSansUI-*',
-//                     base + '/public/LICENSE*.txt'
-//                 ];
-//     for (let script of LO.scripts) {
-//         if (scriptFont[script]) {
-//             gulpsrc.push(base + '/public/' + scriptFont[script]);
-//         }
-//     }
+    if( LO.product.toUpperCase() === 'AO') {
+        gulpsrc.push(base + '/public/nflc-logo2.png');
+        gulpsrc.push(base + '/public/Pattern1.png');
 
-//     if( LO.product.toUpperCase() === 'AO') {
-//         gulpsrc.push(base + '/public/nflc-logo2.png');
-//         gulpsrc.push(base + '/public/Pattern1.png');
+        if (['LCR','LMC'].indexOf(`${LO.lessontype}`.toUpperCase()) !== -1){
+            // Listening AO
+            gulpsrc.push(base + '/public/beep.mp3');
+            gulpsrc.push(base + '/public/kennedy.mp3');
+            gulpsrc.push(base + '/public/littlebeep.mp3');
+            gulpsrc.push(base + '/public/passage*.mp3');
+        } else {
+            gulpsrc.push('!/videogular*');
+        }
+    }
+    return new Promise( (resolve, reject) => {
+        return vfs.src(gulpsrc, { "base": base })
+                // .pipe(map((f:any) => log(f.path)))
+                .pipe(vfs.dest(pathToUI))
+                .on('finish', resolve)
+                .on('error', reject);            
+    });
+  }
 
-//         if (['LCR','LMC'].indexOf(`${LO.lessontype}`.toUpperCase()) !== -1){
-//             // Listening AO
-//             gulpsrc.push(base + '/public/beep.mp3');
-//             gulpsrc.push(base + '/public/kennedy.mp3');
-//             gulpsrc.push(base + '/public/littlebeep.mp3');
-//             gulpsrc.push(base + '/public/passage*.mp3');
-//         } else {
-//             //TODO - test this on a reading AO
-//             gulpsrc.push('!/videogular*');
-//         }
-//     }
-//     return new Promise(function(resolve,reject){
-//         return gulp.src(gulpsrc, { "base": base })
-//                 //.pipe(debug({title:'debug:'}))
-//                 .pipe(gulp.dest(pathToUI))
-//                 .on('finish', resolve)
-//                 .on('error', reject);            
-//     });
-//   }  
+  private async addScormFiles(runEnv: XloRunEnv): Promise<any> {
+    let scormFiles: string;
+    if (runEnv === XloRunEnv.SCORM2004) {
+      scormFiles = `${__dirname}/scorm/2004/**`;
+    } else if (runEnv === XloRunEnv.SCORM1P2) {
+      scormFiles = `${__dirname}/scorm/1p2/**`;
+    } else {
+      return Promise.resolve();
+    }
+    const pees: any[] = [];
+    for (const LO of this.filterList) {
+      const pathToUI = this.getUiRootDir(runEnv, LO.containerId);
+      const exists = await this.fileExists(`${pathToUI}/ims_xml.xsd`);
+      if (!exists || this.force) {
+        pees.push(() => {
+          return new Promise((resolve, reject) => {
+            return vfs.src(scormFiles)
+            .pipe(vfs.dest(pathToUI))
+            .on('finish', resolve)
+            .on('error', reject);                  
+          });
+        });
+      }
+    }
+    return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
+  }
+
+  private async buildManifests(){
+    log(chalk.magenta('Generate SCORM manifest file ...'));
+    const pees: any[] = [];
+    for (const LO of this.filterList) {
+      const pathToUI = this.getUiRootDir(XloRunEnv.SCORM2004, LO.containerId);
+      const exists = await this.fileExists(`${pathToUI}/imsmanifest.xml`);
+      if (!exists || this.force) {
+        pees.push(this.buildManifest(LO));
+      }
+    }
+    return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
+  }
+
+  private buildManifest(LO: any) {
+    const dataDir = this.getDataDir(XloRunEnv.SCORM2004, LO.containerId);
+    const contentJsonPath = path.join(dataDir, 'content.json');
+    const contentJson: any = require(contentJsonPath);
+    const BASE_URL = `https://${this.config.host}/`;
+
+    const product = this.config.package.productType.toLowerCase();
+    let loModality = 'Mixed';
+    if(product === 'ao'){
+        const mapy: any = {
+            RMC: 'Reading',
+            RCR: 'Reading',
+            LMC: 'Listening',
+            LCR: 'Listening'
+        };
+        try{ loModality = mapy[contentJson.lessonType] || 'UNIDENTIFIED'; }
+        catch(e){ log(chalk.red(e)); }
+    } else if(product === 'vlo'){
+        loModality = 'Video';
+    } 
+    
+    var loLevel = 'UNDEFINED';
+    try {
+        loLevel = contentJson.sources[0].level;
+    }
+    catch(e){}
+
+    var loLanguage = 'UNDEFINED';
+    try {
+        loLanguage = contentJson.sources[0].language;
+    }
+    catch(e){}
+
+    var products = {
+        ao: {
+            name: 'Assessment Object',
+            description: `This Assessment Object will help you assess your ${loModality.toLowerCase()} comprehension in ${loLanguage}.  The passages and questions are appropriate for ILR Level ${loLevel}.`,
+            learningresourcetype: 'Self Assesment'
+        },
+        vlo: {
+            name: 'Video Learning Object',
+            description: `This Video Learning Object will help you improve comprehension in ${loLanguage}.  The source material and activities are appropriate for ILR Level ${loLevel}.`,
+            learningresourcetype: 'Exercise'                    
+        },
+        "dlo-clo": {
+            name: 'Compact Learning Object',
+            description: `This Compact Learning Object will help you improve comprehension in ${loLanguage}.  The source materials are appropriate for ILR Level ${loLevel}.`,
+            learningresourcetype: 'Exercise'                    
+        }
+    }
+
+    try {
+        vlo.description = (contentJson.description || contentJson.sources[0].description);
+    }
+    catch(e){}
+
+    var loProduct = {
+        name: 'UNDEFINDED',
+        description: 'UNDEFINED',
+        learningresourcetype: 'UNDEFINED'                            
+    }
+    try {
+        loProduct = products[product];
+    }
+    catch(e){}
+
+    var loTopic = 'UNDEFINED';
+    try {
+        loTopic = contentJson.sources[0].topic;
+    }
+    catch(e){}
+
+    var loDateInspected;
+    try {
+        loDateInspected = new Date(contentJson.dateInspected);
+        if(loDateInspected == 'Invalid Date') throw 'Invalid Date';
+    }
+    catch(e){
+        loDateInspected = new Date();
+    }
+    loDateInspected = loDateInspected.toISOString();
+    loDateInspected = loDateInspected.substring(0,loDateInspected.indexOf('T'));
+
+    var sourceInfo = [];
+    try {
+        for(let x=0;x<contentJson.sources.length;x++){
+            let title = contentJson.sources[x].titleEnglish;
+            let m = /<p>(.*?)<\/p>/g.exec(title);
+            title = m ? m[1] : title;
+            if(product === 'ao'){
+                title = `Passage ${x+1}: ${title}`;
+            } else if(product === 'dlo-clo') {
+                title = `Day ${x+1}: ${title}`;                
+            }
+            sourceInfo.push({titleEnglish: title });
+        }
+    }
+    catch(e){}
+
+    var objectTitle = 'UNDEFINED';
+    let regex = /(<([^>]+)>)/ig;
+    try {
+        if(contentJson.title){
+            objectTitle = contentJson.title;
+        } else {
+            objectTitle = sourceInfo[0].titleEnglish;
+        }
+        objectTitle = objectTitle.replace(regex, "");
+    }
+    catch (e){}
+
+    return new Promise(function(resolve,reject){
+        return gulp.src(path.join(PACKAGE_DIR, LO.containerId, '**'))
+            .pipe(manifest({
+                version: CONFIG_JSON['scorm2004'] ? '2004': '1.2',
+                courseId: contentJson.containerId,
+                SCOtitle: 'AngularJS test',
+                moduleTitle: 'AngularJS Test module',
+                launchPage: `index.html?ui=${contentJson.product.toLowerCase()}&id=${contentJson.containerId}`,
+                loMetadata: {
+                    title: objectTitle,
+                    product: loProduct,
+                    modality: loModality,
+                    contract: CONFIG_JSON.contract || 'UNDEFINED',
+                    language: loLanguage,
+                    topic: loTopic,
+                    level: loLevel,
+                    dateInspected: loDateInspected,
+                    sources: sourceInfo
+                },
+                path: '',
+                fileName: 'imsmanifest.xml'
+            }))
+            .pipe(gulp.dest(path.join(PACKAGE_DIR, LO.containerId)))
+            .on('finish', resolve)
+            .on('error', reject);            
+
+    }); 
+  }
+  private getLouiDirPath(): string {
+    return path.join(this.packageDir, this.uiDirName, 'loui');
+  }
+  private getPublicDirPath(): string {
+    return path.join(this.getLouiDirPath(), 'public');
+  }
 }
 
 
