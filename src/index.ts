@@ -16,7 +16,6 @@ const rejectSelfSignedCert = true;
 const agent = new https.Agent({  
   rejectUnauthorized: rejectSelfSignedCert
 });
-const IS_WIN = /^win/.test(process.platform);
 
 export enum XloStateEnum {
   NOCONFIG = 1,
@@ -92,10 +91,11 @@ export class LoPackageExporter {
   }
 
   public async login() {
+    log(chalk`Login to {magenta https://${this.config.host}} with user {magenta ${this.config.user}}.`);
     const r: any = await prompts({
       type: 'password',
       name: 'pwd',
-      message: `Enter password for user "${this.config.user}"`
+      message: `Enter password`
     });
     const theBody: any = {
       username: this.config.user,
@@ -167,7 +167,6 @@ export class LoPackageExporter {
 
     // get UI files
     const datas = await this.getLatestUiFiles();
-    log(`Status File                Saved To`);
     await this.downloadUiFileGroup(datas[0]); // LOUI_v#-##
     await this.downloadUiFileGroup(datas[1]); // public container
     
@@ -197,7 +196,6 @@ export class LoPackageExporter {
         jso.containerId = jso.id;
       }
       log('Object #id: ', chalk.magenta(jso.containerId),' with #', chalk.magenta(filelist.length), 'files');
-      log(`Status File                    Saved To`);
       const dataPath = this.getDataDir(runEnv, jso.containerId);
       const contentFilePath = path.join(dataPath, 'content.json');
       fs.writeFileSync(contentFilePath, JSON.stringify(jso), { encoding: 'utf8'});
@@ -251,6 +249,15 @@ export class LoPackageExporter {
       return Promise.all(downloads);
     }), Promise.resolve());
 
+    const indexHtmlPath = path.join(this.packageDir, this.uiDirName, 'loui', 'index.html');
+    const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+    if (indexHtml.indexOf('publicUpOne=true;')) {
+      fs.writeFileSync(indexHtmlPath, indexHtml.replace('publicUpOne=true;', 'publicUpOne=false;'), 'utf8');
+    }
+
+    // copy UI into dirs
+
+
     return 'pack done';
   }
 
@@ -264,7 +271,7 @@ export class LoPackageExporter {
     return p.replace(this.packageDir, '').replace(/[^/]+$/, '');
   }
 
-  private async fileExists(target: string) {
+  private async fileExists(target: string): Promise<boolean> {
     return new Promise((resolve, reject) => {
         fs.open(target, 'r', (err2, fd2) => {
             if (err2) {
@@ -284,7 +291,7 @@ export class LoPackageExporter {
     .then( (response: any) => {
       const savePath = path.join(dataPath, fileName);
       const color = response.statusText === 'OK' ? 'green' : 'red';
-      log(chalk`{${color} ${response.statusText}}     {blue ${fileName}}      {green ${this.short(savePath)}}`);   
+      log(chalk`{${color} ${response.statusText}} {green ${this.short(savePath)}} {blue ${fileName}}`);   
       return response.data.pipe(fs.createWriteStream(savePath));
     })
     .catch( (error: any) => {
@@ -349,46 +356,47 @@ export class LoPackageExporter {
   private async downloadUiFileGroup(uiFileList: IFileInfo[]) {
     const pees: any[] = [];
     for (const file of uiFileList) {
-      const p = this.axi.get(`https://${this.config.host}/api/UI/${file.container}/download/${file.name}`, {
-        responseType:'stream'
-      })
-      .then( (rs: any) => {
-        const uiDir = file.container === 'public' ? 'public' : 'loui';
-        const savePath = path.join(this.packageDir, this.uiDirName, uiDir, file.name);
-        const color = rs.statusText === 'OK' ? 'green' : 'red';
-        log(chalk`{${color} ${rs.statusText}}  {blue ${file.name}}            {green ${path.join(this.uiDirName, uiDir)}}`);   
-        return rs.data.pipe(fs.createWriteStream(savePath));
-      })
-      .catch( (error: any) => {
-        log('Download Error: ', error);
-      });
-      pees.push(p);
+      const uiDir = file.container === 'public' ? 'public' : 'loui';
+      const savePath = path.join(this.packageDir, this.uiDirName, uiDir, file.name);
+      const exists = await this.fileExists(savePath);
+      if (!exists || this.force) {
+        const p = this.axi.get(`https://${this.config.host}/api/UI/${file.container}/download/${file.name}`, {
+          responseType:'stream'
+        })
+        .then( (rs: any) => {
+          const color = rs.statusText === 'OK' ? 'green' : 'red';
+          log(chalk`{${color} ${rs.statusText}} {green ${path.join(this.uiDirName, uiDir)}} {blue ${file.name}}`);   
+          return rs.data.pipe(fs.createWriteStream(savePath));
+        })
+        .catch( (error: any) => {
+          log('Download Error: ', error);
+        });
+        pees.push(p);  
+      } else {
+        log(chalk`Skip {cyan ${file.name}}`);
+      }
     }
     return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
   }
 
-  // private async copyUIBuildIntoDirs(runEnv: XloRunEnv) {
-  //   log(chalk.magenta('Copy UI files into build directories ...'));
-  //   const pees: any[] = [];
-  //   for (const LO of this.filterList) {
-  //     const separator = IS_WIN ? '\\' : '/';
-  //     const pathPartsToUI = this.getDataDir(runEnv, LO.containerId).split(separator);
-  //     pathPartsToUI.pop();
-  //     pathPartsToUI.pop();
-  //     const pathToUI = pathPartsToUI.join('/');
-  //     const p: Promise<any> = this.fileExists(`${pathToUI}/index.html`).then( exists => { 
-  //       if (exists && this.force === false) {
-  //         log(`Skip UI: ${chalk.cyan(LO.containerId)}`);
-  //         return Promise.resolve();
-  //       } else {
-  //         log(`Copy UI: ${chalk.magenta(LO.containerId)}`);
-  //         return this.copyUiToPath(LO, pathToUI);
-  //       }  
-  //     });
-  //     pees.push(p);
-  //   }
-  //   return pees.reduce((accumulator, response) => accumulator.then(response));
-  // }
+  private async copyUIBuildIntoDirs(runEnv: XloRunEnv) {
+    log(chalk.magenta('Copy UI files into build directories ...'));
+    const pees: any[] = [];
+    for (const LO of this.filterList) {
+      const pathPartsToUI = this.getDataDir(runEnv, LO.containerId).split(path.sep);
+      pathPartsToUI.pop();
+      pathPartsToUI.pop();
+      const pathToUI = pathPartsToUI.join('/');
+      const exists = await this.fileExists(`${pathToUI}/index.html`);
+      if (!exists || this.force) {
+        const p2 = this.copyUiToPath(LO, pathToUI);
+        pees.push(p2);
+      } else {
+        log(`Skip UI: ${chalk.cyan(LO.containerId)}`);
+      }
+    }
+    return pees.reduce((accumulator, response) => accumulator.then(response));
+  }
 
 // private copyUiToPath(LO, pathToUI) {
 //     if(!LO.product) return printError(LO.containerId + ": Could not identify product type");
