@@ -37,6 +37,7 @@ export enum XloRunEnv {
 }
 
 export interface IXloPackage {
+  contract: string;
   productType: string;
   filter: object;
 }
@@ -59,15 +60,25 @@ export class LoPackageExporter {
   private axi: any;
   private dataDirName: string = '__DATA__';
   private uiDirName: string = '__UI__';
+  private runEnv: XloRunEnv = XloRunEnv.SCORM2004;
+  private config: IXloYaml;
 
   constructor(
-    private config: IXloYaml = { host: null, user: '', package: {productType: '', filter: {}}},
     private packageDir: string = process.cwd(),
     private accessToken: string = '',
     private langs: any[] = [],
     private filterList: any[] = []
     ){
-  
+      // default config
+      this.config = { 
+        host: null, 
+        user: '', 
+        package: {
+          contract: 'UNDEFINED', 
+          productType: '', 
+          filter: {}
+        }
+      };
     }
 
 
@@ -156,16 +167,16 @@ export class LoPackageExporter {
       ],
       initial: 0
     });
-    return r.value;
+    return this.runEnv = r.value;
   }
 
   public async cliPack() {
     await this.login();
-    const runEnv = await this.promptForRunEnv();
-    return this.pack(runEnv);
+    await this.promptForRunEnv();
+    return this.pack();
   }
 
-  public async pack(runEnv: any) {
+  public async pack() {
     await axios.all([this.setLangs(), this.setLearningObjectList()]);
     // create directory structure
     const plist: any[] = [];
@@ -174,7 +185,7 @@ export class LoPackageExporter {
     plist.push(makeDir(this.getLouiDirPath()));
     plist.push(makeDir(this.getPublicDirPath()));
     for (const LO of this.filterList) {
-      plist.push(makeDir(this.getDataDir(runEnv, LO.containerId)));
+      plist.push(makeDir(this.getDataDir(LO.containerId)));
     }
     await Promise.all(plist);
 
@@ -209,7 +220,7 @@ export class LoPackageExporter {
         jso.containerId = jso.id;
       }
       log('Object #id: ', chalk.magenta(jso.containerId),' with #', chalk.magenta(filelist.length), 'files');
-      const dataPath = this.getDataDir(runEnv, jso.containerId);
+      const dataPath = this.getDataDir(jso.containerId);
       const contentFilePath = path.join(dataPath, 'content.json');
       fs.writeFileSync(contentFilePath, JSON.stringify(jso), { encoding: 'utf8'});
       const x = this.filterList.findIndex((o) => o.containerId === jso.containerId);
@@ -267,22 +278,21 @@ export class LoPackageExporter {
     if (indexHtml.indexOf('publicUpOne=true;')) {
       fs.writeFileSync(indexHtmlPath, indexHtml.replace('publicUpOne=true;', 'publicUpOne=false;'), 'utf8');
     }
-    log('Copy UI files to each object directory.');
-    await this.copyUIBuildIntoDirs(runEnv);
+    await this.copyUIBuildIntoDirs();
     log('Copy SCORM files to each object directory.');
-    await this.addScormFiles(runEnv);
+    await this.addScormFiles();
 
     return 'pack done';
   }
-  private getUiRootDir(runEnv: XloRunEnv, containerId: string): string {
+  private getUiRootDir(containerId: string): string {
     // assuming SCORM package if not standalone
-    return runEnv === XloRunEnv.STANDALONE ?
+    return this.runEnv === XloRunEnv.STANDALONE ?
       this.packageDir :
       path.join(this.packageDir, this.dataDirName, containerId);
   }
-  private getDataDir(runEnv: XloRunEnv, containerId: string): string {
+  private getDataDir(containerId: string): string {
     // assuming SCORM package if not standalone
-    return runEnv === XloRunEnv.STANDALONE ?
+    return this.runEnv === XloRunEnv.STANDALONE ?
       path.join(this.packageDir, 'data', containerId) :
       path.join(this.packageDir, this.dataDirName, containerId, 'data', containerId);
   }
@@ -402,11 +412,11 @@ export class LoPackageExporter {
     return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
   }
 
-  private async copyUIBuildIntoDirs(runEnv: XloRunEnv) {
+  private async copyUIBuildIntoDirs() {
     const pees: any[] = [];
-    // log(chalk.magenta('Copy UI files to object directories.'));
+    log(chalk.magenta('Copy UI files to object directories.'));
     for (const LO of this.filterList) {
-      const pathToUI = this.getUiRootDir(runEnv, LO.containerId);
+      const pathToUI = this.getUiRootDir(LO.containerId);
       const exists = await this.fileExists(`${pathToUI}/index.html`);
       if (!exists || this.force) {
         pees.push(this.copyUiToPath(LO, pathToUI));
@@ -484,18 +494,19 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     });
   }
 
-  private async addScormFiles(runEnv: XloRunEnv): Promise<any> {
+  private async addScormFiles(): Promise<any> {
+    log(chalk.magenta('Copy SCORM files to object directories.'));
     let scormFiles: string;
-    if (runEnv === XloRunEnv.SCORM2004) {
+    if (this.runEnv === XloRunEnv.SCORM2004) {
       scormFiles = `${__dirname}/scorm/2004/**`;
-    } else if (runEnv === XloRunEnv.SCORM1P2) {
+    } else if (this.runEnv === XloRunEnv.SCORM1P2) {
       scormFiles = `${__dirname}/scorm/1p2/**`;
     } else {
       return Promise.resolve();
     }
     const pees: any[] = [];
     for (const LO of this.filterList) {
-      const pathToUI = this.getUiRootDir(runEnv, LO.containerId);
+      const pathToUI = this.getUiRootDir(LO.containerId);
       const exists = await this.fileExists(`${pathToUI}/ims_xml.xsd`);
       if (!exists || this.force) {
         pees.push(() => {
@@ -515,7 +526,7 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     log(chalk.magenta('Generate SCORM manifest file ...'));
     const pees: any[] = [];
     for (const LO of this.filterList) {
-      const pathToUI = this.getUiRootDir(XloRunEnv.SCORM2004, LO.containerId);
+      const pathToUI = this.getUiRootDir(LO.containerId);
       const exists = await this.fileExists(`${pathToUI}/imsmanifest.xml`);
       if (!exists || this.force) {
         pees.push(this.buildManifest(LO));
@@ -525,7 +536,7 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
   }
 
   private buildManifest(LO: any) {
-    const dataDir = this.getDataDir(XloRunEnv.SCORM2004, LO.containerId);
+    const dataDir = this.getDataDir(LO.containerId);
     const contentJsonPath = path.join(dataDir, 'content.json');
     const contentJson: any = require(contentJsonPath);
     const BASE_URL = `https://${this.config.host}/`;
@@ -545,19 +556,19 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
         loModality = 'Video';
     } 
     
-    var loLevel = 'UNDEFINED';
+    let loLevel = 'UNDEFINED';
     try {
         loLevel = contentJson.sources[0].level;
     }
-    catch(e){}
+    catch(e){ log(chalk.red(e)); }
 
-    var loLanguage = 'UNDEFINED';
+    let loLanguage = 'UNDEFINED';
     try {
         loLanguage = contentJson.sources[0].language;
     }
-    catch(e){}
+    catch(e){ log(chalk.red(e)); }
 
-    var products = {
+    const products: any = {
         ao: {
             name: 'Assessment Object',
             description: `This Assessment Object will help you assess your ${loModality.toLowerCase()} comprehension in ${loLanguage}.  The passages and questions are appropriate for ILR Level ${loLevel}.`,
@@ -573,33 +584,33 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
             description: `This Compact Learning Object will help you improve comprehension in ${loLanguage}.  The source materials are appropriate for ILR Level ${loLevel}.`,
             learningresourcetype: 'Exercise'                    
         }
-    }
+    };
 
     try {
-        vlo.description = (contentJson.description || contentJson.sources[0].description);
+      products.vlo.description = (contentJson.description || contentJson.sources[0].description);
     }
-    catch(e){}
+    catch(e){ log(chalk.red(e)); }
 
-    var loProduct = {
+    let loProduct = {
         name: 'UNDEFINDED',
         description: 'UNDEFINED',
         learningresourcetype: 'UNDEFINED'                            
-    }
+    };
     try {
         loProduct = products[product];
     }
-    catch(e){}
+    catch(e){ log(chalk.red(e)); }
 
-    var loTopic = 'UNDEFINED';
+    let loTopic = 'UNDEFINED';
     try {
         loTopic = contentJson.sources[0].topic;
     }
-    catch(e){}
+    catch(e){ log(chalk.red(e)); }
 
-    var loDateInspected;
+    let loDateInspected: any;
     try {
         loDateInspected = new Date(contentJson.dateInspected);
-        if(loDateInspected == 'Invalid Date') throw 'Invalid Date';
+        if(loDateInspected === 'Invalid Date') { throw new Error('Invalid Date'); }
     }
     catch(e){
         loDateInspected = new Date();
@@ -607,11 +618,11 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     loDateInspected = loDateInspected.toISOString();
     loDateInspected = loDateInspected.substring(0,loDateInspected.indexOf('T'));
 
-    var sourceInfo = [];
+    const sourceInfo: any[] = [];
     try {
         for(let x=0;x<contentJson.sources.length;x++){
             let title = contentJson.sources[x].titleEnglish;
-            let m = /<p>(.*?)<\/p>/g.exec(title);
+            const m = /<p>(.*?)<\/p>/g.exec(title);
             title = m ? m[1] : title;
             if(product === 'ao'){
                 title = `Passage ${x+1}: ${title}`;
@@ -621,10 +632,10 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
             sourceInfo.push({titleEnglish: title });
         }
     }
-    catch(e){}
+    catch(e){ log(chalk.red(e)); }
 
-    var objectTitle = 'UNDEFINED';
-    let regex = /(<([^>]+)>)/ig;
+    let objectTitle = 'UNDEFINED';
+    const regex = /(<([^>]+)>)/ig;
     try {
         if(contentJson.title){
             objectTitle = contentJson.title;
@@ -633,12 +644,13 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
         }
         objectTitle = objectTitle.replace(regex, "");
     }
-    catch (e){}
+    catch(e){ log(chalk.red(e)); }
 
-    return new Promise(function(resolve,reject){
-        return gulp.src(path.join(PACKAGE_DIR, LO.containerId, '**'))
+    const manifest = require('@umdnflc/gulp-scorm-manifest');
+    return new Promise( (resolve, reject) => {
+        return vfs.src(path.join(this.packageDir, LO.containerId, '**'))
             .pipe(manifest({
-                version: CONFIG_JSON['scorm2004'] ? '2004': '1.2',
+                version: this.runEnv === XloRunEnv.SCORM2004 ? '2004': '1.2',
                 courseId: contentJson.containerId,
                 SCOtitle: 'AngularJS test',
                 moduleTitle: 'AngularJS Test module',
@@ -647,7 +659,7 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
                     title: objectTitle,
                     product: loProduct,
                     modality: loModality,
-                    contract: CONFIG_JSON.contract || 'UNDEFINED',
+                    contract: this.config.package.contract,
                     language: loLanguage,
                     topic: loTopic,
                     level: loLevel,
@@ -657,7 +669,7 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
                 path: '',
                 fileName: 'imsmanifest.xml'
             }))
-            .pipe(gulp.dest(path.join(PACKAGE_DIR, LO.containerId)))
+            .pipe(vfs.dest(path.join(this.packageDir, LO.containerId)))
             .on('finish', resolve)
             .on('error', reject);            
 
