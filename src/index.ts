@@ -13,9 +13,11 @@ const { LogFrame } = require('log-frame');
 const { Spinner } = require('logf-spinner');
 const map = require('map-stream');
 const vfs = require('vinyl-fs');
+const manifest = require('@umdnflc/gulp-scorm-manifest');
 
 // tslint:disable-next-line:no-console
 const log = console.log;
+
 const rejectSelfSignedCert = true;
 // for axios
 const agent = new https.Agent({  
@@ -279,9 +281,9 @@ export class LoPackageExporter {
       fs.writeFileSync(indexHtmlPath, indexHtml.replace('publicUpOne=true;', 'publicUpOne=false;'), 'utf8');
     }
     await this.copyUIBuildIntoDirs();
-    log('Copy SCORM files to each object directory.');
     await this.addScormFiles();
-
+    await this.buildManifests();
+    // zip
     return 'pack done';
   }
   private getUiRootDir(containerId: string): string {
@@ -522,8 +524,8 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
   }
 
-  private async buildManifests(){
-    log(chalk.magenta('Generate SCORM manifest file ...'));
+  private async buildManifests(): Promise<any>{
+    log(chalk.magenta('Generate SCORM manifest files ...'));
     const pees: any[] = [];
     for (const LO of this.filterList) {
       const pathToUI = this.getUiRootDir(LO.containerId);
@@ -535,11 +537,11 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
   }
 
-  private buildManifest(LO: any) {
+  private async buildManifest(LO: any): Promise<any> {
+    log(`Build manifest for ${LO.containerId}`);
     const dataDir = this.getDataDir(LO.containerId);
     const contentJsonPath = path.join(dataDir, 'content.json');
     const contentJson: any = require(contentJsonPath);
-    const BASE_URL = `https://${this.config.host}/`;
 
     const product = this.config.package.productType.toLowerCase();
     let loModality = 'Mixed';
@@ -560,13 +562,17 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     try {
         loLevel = contentJson.sources[0].level;
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
     let loLanguage = 'UNDEFINED';
     try {
         loLanguage = contentJson.sources[0].language;
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
     const products: any = {
         ao: {
@@ -589,7 +595,9 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     try {
       products.vlo.description = (contentJson.description || contentJson.sources[0].description);
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
     let loProduct = {
         name: 'UNDEFINDED',
@@ -599,13 +607,17 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
     try {
         loProduct = products[product];
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
     let loTopic = 'UNDEFINED';
     try {
         loTopic = contentJson.sources[0].topic;
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
     let loDateInspected: any;
     try {
@@ -632,7 +644,9 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
             sourceInfo.push({titleEnglish: title });
         }
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
     let objectTitle = 'UNDEFINED';
     const regex = /(<([^>]+)>)/ig;
@@ -644,12 +658,13 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
         }
         objectTitle = objectTitle.replace(regex, "");
     }
-    catch(e){ log(chalk.red(e)); }
+    catch(e){
+      // silently ignore
+    }
 
-    const manifest = require('@umdnflc/gulp-scorm-manifest');
     return new Promise( (resolve, reject) => {
-        return vfs.src(path.join(this.packageDir, LO.containerId, '**'))
-            .pipe(manifest({
+        return vfs.src(path.join(this.getUiRootDir(contentJson.containerId), '**'))
+              .pipe(manifest({
                 version: this.runEnv === XloRunEnv.SCORM2004 ? '2004': '1.2',
                 courseId: contentJson.containerId,
                 SCOtitle: 'AngularJS test',
@@ -669,10 +684,9 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
                 path: '',
                 fileName: 'imsmanifest.xml'
             }))
-            .pipe(vfs.dest(path.join(this.packageDir, LO.containerId)))
+            .pipe(vfs.dest(this.getUiRootDir(contentJson.containerId)))
             .on('finish', resolve)
-            .on('error', reject);            
-
+            .on('error', reject);
     }); 
   }
   private getLouiDirPath(): string {

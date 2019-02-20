@@ -33,7 +33,7 @@
   "devDependencies": {
     "@types/jest": "^24.0.3",
     "@types/node": "^11.9.3",
-    "@umdnflc/gulp-scorm-manifest": "git+https://github.com/NFLC-UMD/gulp-scorm-manifest",
+    "@umdnflc/gulp-scorm-manifest": "git+https://github.com/NFLC-UMD/gulp-scorm-manifest.git",
     "@umdnflc/scorm-api-wrapper": "git+https://github.com/NFLC-UMD/scorm-api-wrapper.git",
     "jest": "^24.1.0",
     "nodemon": "^1.18.10",
