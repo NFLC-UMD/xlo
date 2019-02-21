@@ -15,7 +15,7 @@ const log = console.log;
 clear();
 log(
   chalk.green(
-    figlet.textSync('xlo-cli',{font: 'Ghost'})
+    figlet.textSync('xlo-cli')
   )
 );
 

@@ -44,45 +44,5 @@ You must first run:
     lpe.setConfig();
     lpe.cliPack();
     
-    // GetAuthenticationToken()
-    //     .then(function(){
-    //     })
-    //     .then(function(langs){
-    //         LANGS = langs;
-    //         return getLearningObjectList();
-    //     })
-    //     .then(function(){
-    //         return buildProjectStructure();
-    //     }) 
-    //     .then(function(){
-    //         return writeData();
-    //     })   
-    //     .then(function(){
-    //         return copyUIBuildIntoDirs();
-    //     }) 
-    //     .then(function(){
-    //         if(CONFIG_JSON.runEnv == "scorm"){
-    //             return addScormFiles();
-    //         }
-    //         else {
-    //             return Promise.resolve();
-    //         }
-    //     })
-    //     .then(function(){
-    //         if(CONFIG_JSON.runEnv == "scorm"){
-    //             return buildManifests();
-    //         }
-    //         else {
-    //             return Promise.resolve();
-    //         }
-    //     })
-    //     .then(function(){
-    //         if(CONFIG_JSON.runEnv == "scorm"){
-    //             return buildZipArchives();
-    //         }
-    //         else {
-    //             return Promise.resolve();
-    //         }
-    //     })
 }
 

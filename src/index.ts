@@ -13,7 +13,9 @@ const { LogFrame } = require('log-frame');
 const { Spinner } = require('logf-spinner');
 const map = require('map-stream');
 const vfs = require('vinyl-fs');
-const manifest = require('@umdnflc/gulp-scorm-manifest');
+const globy = require('globby');
+const xml2js = require('xml2js');
+const archiver = require('archiver');
 
 // tslint:disable-next-line:no-console
 const log = console.log;
@@ -172,13 +174,13 @@ export class LoPackageExporter {
     return this.runEnv = r.value;
   }
 
-  public async cliPack() {
+  public async cliPack(): Promise<any> {
     await this.login();
     await this.promptForRunEnv();
     return this.pack();
   }
 
-  public async pack() {
+  public async pack(): Promise<any> {
     await axios.all([this.setLangs(), this.setLearningObjectList()]);
     // create directory structure
     const plist: any[] = [];
@@ -283,8 +285,7 @@ export class LoPackageExporter {
     await this.copyUIBuildIntoDirs();
     await this.addScormFiles();
     await this.buildManifests();
-    // zip
-    return 'pack done';
+    return this.buildZipArchives();
   }
   private getUiRootDir(containerId: string): string {
     // assuming SCORM package if not standalone
@@ -534,11 +535,11 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
         pees.push(this.buildManifest(LO));
       }
     }
-    return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
+    return Promise.all(pees);
+    // return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
   }
 
   private async buildManifest(LO: any): Promise<any> {
-    log(`Build manifest for ${LO.containerId}`);
     const dataDir = this.getDataDir(LO.containerId);
     const contentJsonPath = path.join(dataDir, 'content.json');
     const contentJson: any = require(contentJsonPath);
@@ -662,9 +663,7 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
       // silently ignore
     }
 
-    return new Promise( (resolve, reject) => {
-        return vfs.src(path.join(this.getUiRootDir(contentJson.containerId), '**'))
-              .pipe(manifest({
+    const xmlDoc: string = await this.getImsManifest(this.getUiRootDir(contentJson.containerId),  {
                 version: this.runEnv === XloRunEnv.SCORM2004 ? '2004': '1.2',
                 courseId: contentJson.containerId,
                 SCOtitle: 'AngularJS test',
@@ -683,12 +682,128 @@ private async copyUiToPath(LO: any, pathToUI: string): Promise<any> {
                 },
                 path: '',
                 fileName: 'imsmanifest.xml'
-            }))
-            .pipe(vfs.dest(this.getUiRootDir(contentJson.containerId)))
-            .on('finish', resolve)
-            .on('error', reject);
-    }); 
+            });
+    const filePath = path.join(this.getUiRootDir(contentJson.containerId), 'imsmanifest.xml');
+    return new Promise( (resolve, reject) => {
+      return fs.writeFile(filePath, xmlDoc, (error: any) => {
+        if (error) {
+          return reject(error);
+        }
+        log(chalk`Created: {magenta ${this.short(filePath)}}`);
+        return resolve();
+      });
+    });
   }
+
+  private async getImsManifest(fileRoot: string, options: any): Promise<string> {  
+    Object.assign({
+      version: '2004 or 1.2', // default assumes 1.2
+      courseId: 'CourseID',
+      SCOtitle: 'SCO Title',
+      moduleTitle: 'Module Title',
+      launchPage: 'index.html',
+      path: 'data',
+      loMetadata: new Object(),
+      fileName: 'imsmanifest.xml'
+    }, options);
+
+    const xmlTokens: any = {
+      scormType: options.version === '2004' ? 'adlcp:scormType': 'adlcp:scormtype',
+      fileArr: {
+        '$': {
+          'identifier':  'resource_1',
+          'type': 'webcontent',
+          'href': (options.path ? options.path + "/" : "").replace(/\\/g, '/') + options.launchPage
+        },
+        file: []
+      }
+    };
+    xmlTokens.fileArr.$[xmlTokens.scormType] = 'sco';
+    const files = await globy([path.join(fileRoot, '**')]);
+    for (const file of files) {
+      const relPath = file.replace(fileRoot, '').replace(/^\//, '');
+      const fObj: any = {
+        file: {
+          '$': {
+            'href':((options.path ? options.path + "/" : "") + relPath).replace(/\\/g, '/')
+          }
+        }
+      };
+      xmlTokens.fileArr.file.push(fObj.file);
+    }
+    let xmlObj: any;
+    if(this.runEnv === XloRunEnv.SCORM2004){
+      xmlObj = require('./scorm/manifest_2004.json');  
+    } else {
+      xmlObj = require('./scorm/manifest_1p2.json');
+    }
+    xmlObj.manifest.resources = {
+      'resource': xmlTokens.fileArr
+    };
+    xmlObj.manifest.$.identifier = options.courseId;
+    xmlObj.manifest.metadata[0].lom[0].general[0].title[0].langstring[0]._ = options.loMetadata.title;      
+    xmlObj.manifest.metadata[0].lom[0].general[0].catalogentry[0].entry[0].langstring[0]._ = options.courseId;
+    xmlObj.manifest.metadata[0].lom[0].general[0].description[0].langstring[0]._ = options.loMetadata.product.description;
+    xmlObj.manifest.metadata[0].lom[0].general[0].keyword[0].langstring[0]._ = options.loMetadata.title;
+    xmlObj.manifest.metadata[0].lom[0].general[0].keyword[1].langstring[0]._ = options.loMetadata.language;
+    xmlObj.manifest.metadata[0].lom[0].general[0].keyword[2].langstring[0]._ = options.loMetadata.product.name;
+    xmlObj.manifest.metadata[0].lom[0].classification[0].keyword[1].langstring[0]._ = options.loMetadata.language;
+    xmlObj.manifest.metadata[0].lom[0].classification[0].keyword[2].langstring[0]._ = options.loMetadata.product.name;
+    xmlObj.manifest.metadata[0].lom[0].general[0]["c2lmd:c2lextensionmd"][0]["c2lmd:lotype"] = options.loMetadata.product.name;
+    xmlObj.manifest.metadata[0].lom[0].general[0]["c2lmd:c2lextensionmd"][0]["c2lmd:modality"] = options.loMetadata.modality;
+    xmlObj.manifest.metadata[0].lom[0].general[0]["c2lmd:c2lextensionmd"][0]["c2lmd:proflevel"] = options.loMetadata.level;
+    xmlObj.manifest.metadata[0].lom[0].general[0]["c2lmd:c2lextensionmd"][0]["c2lmd:language"] = options.loMetadata.language;
+    xmlObj.manifest.metadata[0].lom[0].general[0]["c2lmd:c2lextensionmd"][0]["c2lmd:topic"] = options.loMetadata.topic;
+    xmlObj.manifest.metadata[0].lom[0].lifecycle[0].contribute[0].date[0].datetime[0] = options.loMetadata.dateInspected;
+    xmlObj.manifest.metadata[0].lom[0].educational[0].learningresourcetype[0].value[0].langstring[0]._ = options.loMetadata.product.learningresourcetype;
+    xmlObj.manifest.metadata[0].lom[0].rights[0].description[0].langstring[0]._ = options.loMetadata.contract;
+    xmlObj.manifest.organizations[0].organization[0].title = [options.loMetadata.title];
+    xmlObj.manifest.organizations[0].organization[0].item[0].title = [options.loMetadata.title];
+
+    const xmlBuilder = new xml2js.Builder();
+    return xmlBuilder.buildObject(xmlObj);
+  }
+
+  private async buildZipArchives(): Promise<any> {
+    log(chalk.magenta('Build zip files ...'));
+    const pees: any[] = [];
+    for (const LO of this.filterList) {
+      const exists = await this.fileExists(path.join(this.packageDir, LO.containerId + '.zip'));
+      if (!exists || this.force) {
+        pees.push(this.buildZip(LO));
+      }
+    }
+    return pees.reduce((accumulator, response) => accumulator.then(response), Promise.resolve());
+  }
+
+  private async buildZip(LO: any): Promise<any> {
+    const output = fs.createWriteStream(path.join(this.packageDir, LO.containerId + '.zip'));
+    const zlib = require('zlib');
+    // https://nodejs.org/api/zlib.html#zlib_zlib_constants
+    const archive = archiver('zip', {
+      zlib: { level: zlib.constants.Z_BEST_COMPRESSION } // Sets the compression level.
+    });
+    return new Promise( (resolve, reject) => {
+      output.on('close', () => {
+        log('Created: ' + LO.containerId + '.zip');
+        resolve();
+      });          
+      archive.on('warning', (err: any) => {
+        if (err.code === 'ENOENT') {
+          log(chalk.yellow('Warning: '), err);
+        } else {
+          reject(err);
+        }
+      });
+      archive.on('error', (err: any) => {
+        reject(err);
+      });
+      archive.pipe(output);
+      archive.directory(this.getUiRootDir(LO.containerId) + '/', false);
+      archive.finalize();  
+    });
+  }
+
   private getLouiDirPath(): string {
     return path.join(this.packageDir, this.uiDirName, 'loui');
   }

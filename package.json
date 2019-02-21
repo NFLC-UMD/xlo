@@ -33,8 +33,6 @@
   "devDependencies": {
     "@types/jest": "^24.0.3",
     "@types/node": "^11.9.3",
-    "@umdnflc/gulp-scorm-manifest": "git+https://github.com/NFLC-UMD/gulp-scorm-manifest.git",
-    "@umdnflc/scorm-api-wrapper": "git+https://github.com/NFLC-UMD/scorm-api-wrapper.git",
     "jest": "^24.1.0",
     "nodemon": "^1.18.10",
     "prettier": "^1.16.4",
@@ -46,11 +44,13 @@
   },
   "dependencies": {
     "@types/jest-diff": "^20.0.0",
+    "archiver": "^3.0.0",
     "axios": "^0.18.0",
     "chalk": "^2.4.2",
     "clear": "^0.1.0",
     "commander": "^2.19.0",
     "figlet": "^1.2.1",
+    "globby": "^9.0.0",
     "js-yaml": "^3.12.1",
     "log-frame": "^1.0.5",
     "logf-spinner": "^1.2.3",
@@ -59,6 +59,7 @@
     "path": "^0.12.7",
     "prompts": "^2.0.2",
     "semver": "^5.6.0",
-    "vinyl-fs": "^3.0.3"
+    "vinyl-fs": "^3.0.3",
+    "xml2js": "^0.4.19"
   }
 }
