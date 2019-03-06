@@ -10,6 +10,5 @@ Requirements:
 npm install -g git+https://git@bitbucket.org:nflcumd/xlo-cli.git
 ```
 
-# Screencast
-[![asciicast](https://asciinema.org/a/X64sJSw3ZZf7myqQzDV4NxcOY.svg)](https://asciinema.org/a/X64sJSw3ZZf7myqQzDV4NxcOY)
+[View Screencast](https://asciinema.org/a/cnAU8st4rLrZ0enjdEBM1uGRg)
 
