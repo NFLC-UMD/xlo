@@ -1,0 +1,880 @@
+{
+    "manifest": {
+        "$": {
+            "identifier": "IDENTIFIER",
+            "version": "1",
+            "xmlns": "http://www.imsglobal.org/xsd/imscp_v1p1",
+            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "xmlns:adlcp": "http://www.adlnet.org/xsd/adlcp_v1p3",
+            "xmlns:adlseq": "http://www.adlnet.org/xsd/adlseq_v1p3",
+            "xmlns:adlnav": "http://www.adlnet.org/xsd/adlnav_v1p3",
+            "xmlns:imsss": "http://www.imsglobal.org/xsd/imsss",
+            "xmlns:c2lcp": "http://www.sumtotalsystems.com/xsd/c2l_cp_rootv1p1",
+            "xsi:schemaLocation": "http://www.imsglobal.org/xsd/imscp_v1p1 imscp_v1p1.xsd http://www.adlnet.org/xsd/adlcp_v1p3 adlcp_v1p3.xsd http://www.adlnet.org/xsd/adlseq_v1p3 adlseq_v1p3.xsd http://www.adlnet.org/xsd/adlnav_v1p3 adlnav_v1p3.xsd http://www.imsglobal.org/xsd/imsss imsss_v1p0.xsd http://www.sumtotalsystems.com/xsd/c2l_cp_rootv1p1 c2l_cp_rootv1p1.xsd"
+        },
+        "metadata": [
+            {
+                "schema": [
+                    "ADL SCORM"
+                ],
+                "schemaversion": [
+                    "2004 4th Edition"
+                ],
+                "lom": [
+                    {
+                        "$": {
+                            "xmlns": "http://ltsc.ieee.org/xsd/LOM",
+                            "xmlns:c2lmd": "http://www.sumtotalsystems.com/xsd/c2l_md_rootv1p1",
+                            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+                            "xsi:schemaLocation": "http://ltsc.ieee.org/xsd/LOM lom.xsd http://www.sumtotalsystems.com/xsd/c2l_md_rootv1p1 c2l_md_rootv1p1.xsd"
+                        },
+                        "general": [
+                            {
+                                "title": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "Assessment Object",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "catalogentry": [
+                                    {
+                                        "catalog": [
+                                            "LangNet"
+                                        ],
+                                        "entry": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "t14tur01",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "language": [
+                                    "en"
+                                ],
+                                "description": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "DESCRIPTION OF LEARNING OBJECT",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "keyword": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "LEARNING OBJECT TITLE",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "LEARNING OBJECT LANGUAGE",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "LEARNING OBJECT PRODUCT TYPE",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregationlevel": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "3",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "c2lmd:c2lextensionmd": [
+                                    {
+                                        "c2lmd:lotype": [
+                                            "Assessment Object"
+                                        ],
+                                        "c2lmd:modality": [
+                                            "Reading"
+                                        ],
+                                        "c2lmd:proflevel": [
+                                            "2+/3"
+                                        ],
+                                        "c2lmd:language": [
+                                            "Turkish"
+                                        ],
+                                        "c2lmd:topic": [
+                                            "Defense/Security"
+                                        ],
+                                        "c2lmd:classification": [
+                                            "UNCLASSIFIED"
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "lifecycle": [
+                            {
+                                "version": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "1.0",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "status": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "Final",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "contribute": [
+                                    {
+                                        "role": [
+                                            {
+                                                "source": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "LOMv1.0",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                "value": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "Author",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "centity": [
+                                            {
+                                                "vcard": [
+                                                    "          BEGIN:vcard          ORG:National Foreign Language Center          END:vcard         "
+                                                ]
+                                            }
+                                        ],
+                                        "date": [
+                                            {
+                                                "datetime": [
+                                                    "2015-05-26"
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "metametadata": [
+                            {
+                                "metadatascheme": [
+                                    "ADL SCORM(TM) 1.2"
+                                ]
+                            }
+                        ],
+                        "technical": [
+                            {
+                                "format": [
+                                    "text/html"
+                                ],
+                                "location": [
+                                    {
+                                        "_": "index.html",
+                                        "$": {
+                                            "type": "URI"
+                                        }
+                                    }
+                                ],
+                                "requirement": [
+                                    {
+                                        "type": [
+                                            {
+                                                "source": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "LOMv1.0",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                "value": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "Browser",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "name": [
+                                            {
+                                                "source": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "LOMv1.0",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                "value": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "Microsoft Internet Explorer",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "minimumversion": [
+                                            "10.0"
+                                        ]
+                                    }
+                                ],
+                                "otherplatformrequirements": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "Windows PC with IE 10 and up or Firefox 30 and up, mp3 media player, speakers or headphones.",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "educational": [
+                            {
+                                "interactivitytype": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "Mixed",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "learningresourcetype": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": " Self Assesment",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "interactivitylevel": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "medium",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "intendedenduserrole": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "Learner",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "context": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "Higher Education",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "Professional Formation",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "typicalagerange": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "adult learner",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "typicallearningtime": [
+                                    {
+                                        "datetime": [
+                                            "01:00:00"
+                                        ]
+                                    }
+                                ],
+                                "language": [
+                                    "en"
+                                ]
+                            }
+                        ],
+                        "rights": [
+                            {
+                                "cost": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "no",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "copyrightandotherrestrictions": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "no",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "description": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "CONTRACT INFORMATION",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "classification": [
+                            {
+                                "purpose": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "LOMv1.0",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "value": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "Security Level",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "taxonpath": [
+                                    {
+                                        "source": [
+                                            {
+                                                "langstring": [
+                                                    {
+                                                        "_": "ADL/DOD Security Taxonomy",
+                                                        "$": {
+                                                            "xml:lang": "x-none"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "taxon": [
+                                            {
+                                                "entry": [
+                                                    {
+                                                        "langstring": [
+                                                            {
+                                                                "_": "unclassified",
+                                                                "$": {
+                                                                    "xml:lang": "x-none"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "description": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "Security classification of the learning material",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "keyword": [
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "unclassified",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "Turkish",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "langstring": [
+                                            {
+                                                "_": "Thematic Unit",
+                                                "$": {
+                                                    "xml:lang": "x-none"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "organizations": [
+            {
+                "$": {
+                    "default": "Test101-org"
+                },
+                "organization": [
+                    {
+                        "$": {
+                            "identifier": "Test101-org"
+                        },
+                        "title": [
+                            "Dummy Test"
+                        ],
+                        "item": [
+                            {
+                                "$": {
+                                    "identifier": "item_1",
+                                    "identifierref": "resource_1"
+                                },
+                                "title": [
+                                    "AngularJS Test module"
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "resources": [
+            {
+                "resource": null
+            }
+        ],
+        "c2lcp:ItemDataExtra": [
+            {
+                "c2lcp:ItemData": [
+                    {
+                        "$": {
+                            "Type": "Course"
+                        },
+                        "c2lcp:ItemSpecificData": [
+                            {
+                                "c2lcp:CourseData": [
+                                    {
+                                        "c2lcp:PackageProperties": [
+                                            {
+                                                "c2lcp:CourseDisplay": [
+                                                    {
+                                                        "c2lcp:ColorNav": [
+                                                            {
+                                                                "c2lcp:Light": [
+                                                                    ""
+                                                                ],
+                                                                "c2lcp:Medium": [
+                                                                    ""
+                                                                ],
+                                                                "c2lcp:Dark": [
+                                                                    ""
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "c2lcp:ColorData": [
+                                                            {
+                                                                "c2lcp:Light": [
+                                                                    ""
+                                                                ],
+                                                                "c2lcp:Medium": [
+                                                                    ""
+                                                                ],
+                                                                "c2lcp:Dark": [
+                                                                    ""
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "c2lcp:ShowNavBar": [
+                                                            "no"
+                                                        ],
+                                                        "c2lcp:TOC": [
+                                                            {
+                                                                "c2lcp:MaxLevels": [
+                                                                    "0"
+                                                                ],
+                                                                "c2lcp:MaxWidth": [
+                                                                    "0"
+                                                                ],
+                                                                "c2lcp:ScrollBar": [
+                                                                    "no"
+                                                                ],
+                                                                "c2lcp:TreeOpenIcon": [
+                                                                    {
+                                                                        "$": {
+                                                                            "width": "9",
+                                                                            "height": "9"
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "c2lcp:TreeCloseIcon": [
+                                                                    {
+                                                                        "$": {
+                                                                            "width": "9",
+                                                                            "height": "9"
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "c2lcp:TopImage": [
+                                                                    {
+                                                                        "$": {
+                                                                            "width": "-1",
+                                                                            "height": "-1"
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "c2lcp:BottomImage": [
+                                                                    {
+                                                                        "$": {
+                                                                            "width": "-1",
+                                                                            "height": "-1"
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "c2lcp:BackgroundColor": [
+                                                                    "ffffff"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                "c2lcp:Launch": [
+                                                    {
+                                                        "c2lcp:Width": [
+                                                            "1024"
+                                                        ],
+                                                        "c2lcp:Height": [
+                                                            "768"
+                                                        ],
+                                                        "c2lcp:AllowResize": [
+                                                            "yes"
+                                                        ]
+                                                    }
+                                                ],
+                                                "c2lcp:GlobalData": [
+                                                    ""
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

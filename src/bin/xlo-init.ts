@@ -70,23 +70,30 @@ async function SelectPackage(responses: IXloYaml, pwd?: string): Promise<IXloYam
         body: theBody  
     })
     .then((data: any) => {
-        log(chalk`Got access token {yellow ${data.id}}`);
+        log(chalk`Got access token.`);
         const questions = [
             {
                 choices: [
-                    { title: 'Red', value: '#ff0000' },
-                    { title: 'Green', value: '#00ff00' },
-                    { title: 'Blue', value: '#0000ff' }
+                    { title: 'Package A', value: '#ff0000' },
+                    { title: 'Package B', value: '#00ff00' },
+                    { title: 'Package C', value: '#0000ff' }
                 ],
                 message: 'Select a package',
                 name: 'package',
                 type: 'select'
             }
         ];
-        return prompts(questions);
+        // enable this after web packaging piece is done.
+        // return prompts(questions);
+        return Promise.resolve('adsf');
     })
     .then( (resp: any) => {
-        responses.package = resp.package;
+        // responses.package = resp.package;
+        responses.package = { 
+            contract: 'unknown',
+            productType: 'dlo-clo',
+            filter: {}
+        };
         return Promise.resolve(responses);
     });
 }
