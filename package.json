@@ -1,7 +1,7 @@
 {
-  "name": "@umdnflc/xlo-cli",
-  "version": "1.0.1",
-  "description": "A tool for packaging NFLC Learning Objects",
+  "name": "@umdnflc/xlo",
+  "version": "0.1.0",
+  "description": "A tool for exporting and packaging AUTHOR Learning Objects",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
@@ -20,9 +20,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://bitbucket.com/nflcumd/xlo-cli"
+    "url": "git@github.com:NFLC-UMD/xlo.git"
   },
-  "author": "Thomas W. Ford",
+  "author": "Thomas Ford",
   "license": "ISC",
   "files": [
     "lib/**/*"

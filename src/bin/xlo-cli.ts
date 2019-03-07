@@ -21,7 +21,7 @@ log(
 
 program
   .version('0.0.1')
-  .description("NFLC's Learning Object Export Tool. To get started, run " + chalk.bgWhite.magenta('xlo init') + " in an empty directory.")
+  .description("A tool for exporting and packaging AUTHOR Learning Objects. To get started, run " + chalk.bgWhite.magenta('xlo init') + " in an empty directory.")
   .command('init', 'Initialize an empty directory')
   .command('pack', 'Download and package the configured items for this directory.')
   .option('-o, --id [value]', 'Export object by id')

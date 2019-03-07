@@ -9,9 +9,6 @@ const prompts = require('prompts');
 const axios = require('axios');
 const makeDir = require('make-dir');
 const semver = require('semver');
-const { LogFrame } = require('log-frame');
-const { Spinner } = require('logf-spinner');
-const map = require('map-stream');
 const vfs = require('vinyl-fs');
 const globy = require('globby');
 const xml2js = require('xml2js');
@@ -21,6 +18,7 @@ const archiver = require('archiver');
 const log = console.log;
 
 const rejectSelfSignedCert = true;
+
 // for axios
 const agent = new https.Agent({  
   rejectUnauthorized: rejectSelfSignedCert

@@ -7,7 +7,7 @@ Requirements:
 # Get Started
 
 ```sh
-npm install -g git+https://git@github.com:NFLC-UMD/xlo-cli.git
+npm install -g @umdnflc/xlo
 ```
 
 [View Screencast](https://asciinema.org/a/cnAU8st4rLrZ0enjdEBM1uGRg)
